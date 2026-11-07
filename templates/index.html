@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}Senaste briefen · {{ app_name }}{% endblock %}
+{% block content %}
+  <section class="intro">
+    <p class="eyebrow">DAGLIG LÄGESBILD</p>
+    <h1>Säkerhetsbrief<br><span>Norra Europa</span></h1>
+    <p class="lead">Sverige, Östersjöområdet, Ryssland och NATO. En källbelagd sammanställning av utvecklingen och dess möjliga betydelse.</p>
+  </section>
+
+  {% if latest %}
+    <section class="latest">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">SENASTE RAPPORT</p>
+          <h2>{{ latest.title }}</h2>
+        </div>
+        <time>{{ latest.report_date }}</time>
+      </div>
+      <article class="prose">{{ latest_html | safe }}</article>
+      <a class="text-link" href="/reports/{{ latest.report_date }}">Visa rapporten separat →</a>
+    </section>
+  {% else %}
+    <section class="empty">
+      <p class="eyebrow">INVÄNTAR FÖRSTA PUBLICERING</p>
+      <h2>Ingen rapport har publicerats ännu.</h2>
+      <p>När rapportflödet är anslutet visas den senaste briefen här.</p>
+    </section>
+  {% endif %}
+
+  <section class="archive">
+    <div class="section-heading">
+      <div><p class="eyebrow">TIDIGARE UTGÅVOR</p><h2>Arkiv</h2></div>
+      <span class="count">{{ reports | length }} rapporter</span>
+    </div>
+    {% if reports %}
+      <ul class="report-list">
+        {% for item in reports %}
+          <li>
+            <a href="/reports/{{ item.report_date }}">
+              <span>{{ item.title }}</span>
+              <time>{{ item.report_date }}</time>
+            </a>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="muted">Arkivet fylls på när rapporter publiceras.</p>
+    {% endif %}
+  </section>
+{% endblock %}
