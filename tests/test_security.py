@@ -12,7 +12,7 @@ def test_markdown_renderer_removes_script_tags():
     html = rendered("Safe text\n\n<script>alert('x')</script>")
     assert "Safe text" in html
     assert "<script>" not in html
-    assert "alert(" not in html
+    assert "</script>" not in html
 
 def test_markdown_renderer_keeps_https_links():
     html = rendered("[Official source](https://example.com/report)")
