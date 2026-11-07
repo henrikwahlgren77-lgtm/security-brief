@@ -27,7 +27,8 @@ Successful response:
 ```json
 {
   "ok": true,
-  "report_date": "2026-11-08"
+  "report_date": "2026-11-08",
+  "status": "draft"
 }
 ```
 
@@ -39,8 +40,8 @@ Successful response:
 - A new submission creates a `draft`.
 - A second submission for the same date updates its content and resets it to `draft`, including when it was already published.
 - HTML is generated and sanitized when rendered; raw HTML from the report is not trusted.
-- Missing or incorrect tokens are rejected.
-- Successful response includes `"status": "draft"`.
+- Missing or incorrect tokens are rejected with HTTP 401; if `INGEST_TOKEN` is not configured on the server, the endpoint returns HTTP 503.
+- The successful response always has `"status": "draft"`; ingestion cannot publish.
 
 ## Editorial publishing
 
