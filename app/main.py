@@ -20,6 +20,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field, field_validator
 
+from . import design_sample, pages, presentation
 from .analysis.review import load_review
 
 load_dotenv()
@@ -30,6 +31,8 @@ ADMIN_PASSWORD = os.getenv("APP_ADMIN_PASSWORD", "")
 INGEST_TOKEN = os.getenv("INGEST_TOKEN", "")
 DATABASE_PATH = Path(os.getenv("DATABASE_PATH", "./data/security_brief.sqlite3"))
 DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
+# Fictional design preview under /design. Off by default; never enable it on the public site.
+DESIGN_PREVIEW = os.getenv("DESIGN_PREVIEW", "") == "1"
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
@@ -40,6 +43,10 @@ async def lifespan(_: FastAPI):
 app = FastAPI(title=APP_NAME, docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+templates.env.filters.update(
+    long_date=presentation.long_date, short_date=presentation.short_date, month_label=presentation.month_label,
+    term=presentation.term)
+templates.env.globals.update(urls=pages.REAL_URLS, section=None, preview=False)
 basic = HTTPBasic(auto_error=False)
 
 ALLOWED_TAGS = [
@@ -146,7 +153,7 @@ def rendered(markdown_text: str) -> str:
 def get_reports() -> list[sqlite3.Row]:
     with db() as connection:
         return connection.execute(
-            "SELECT report_date, title, created_at, updated_at "
+            "SELECT report_date, title, markdown, created_at, updated_at, published_at "
             "FROM reports WHERE status = 'published' ORDER BY report_date DESC"
         ).fetchall()
 
@@ -191,18 +198,20 @@ def health():
 
 @app.get("/", response_class=HTMLResponse)
 def home(request: Request):
-    reports = get_reports()
-    latest = get_report(reports[0]["report_date"]) if reports else None
+    context = pages.home_context(get_reports(), rendered, pages.REAL_URLS)
+    return templates.TemplateResponse(request=request, name="index.html", context={"app_name": APP_NAME, **context})
+
+
+@app.get("/arkiv", response_class=HTMLResponse)
+def archive(request: Request, manad: str | None = None, amne: str | None = None, q: str | None = None):
+    context = pages.archive_context(get_reports(), pages.REAL_URLS, manad, amne, q)
+    return templates.TemplateResponse(request=request, name="archive.html", context={"app_name": APP_NAME, **context})
+
+
+@app.get("/metod", response_class=HTMLResponse)
+def method(request: Request):
     return templates.TemplateResponse(
-        request=request,
-        name="index.html",
-        context={
-            "app_name": APP_NAME,
-            "reports": reports,
-            "latest": latest,
-            "latest_html": rendered(latest["markdown"]) if latest else "",
-        },
-    )
+        request=request, name="method.html", context={"app_name": APP_NAME, "urls": pages.REAL_URLS, "section": "method"})
 
 
 @app.get("/reports/{report_date}", response_class=HTMLResponse)
@@ -217,15 +226,8 @@ def report_page(
     report = get_report(report_date)
     if report is None:
         raise HTTPException(status_code=404, detail="Report not found")
-    return templates.TemplateResponse(
-        request=request,
-        name="report.html",
-        context={
-            "app_name": APP_NAME,
-            "report": report,
-            "report_html": rendered(report["markdown"]),
-        },
-    )
+    context = pages.report_context(report, get_reports(), rendered, pages.REAL_URLS)
+    return templates.TemplateResponse(request=request, name="report.html", context={"app_name": APP_NAME, **context})
 
 
 @app.post("/api/reports", dependencies=[Depends(require_ingest_token)])
@@ -317,3 +319,56 @@ def review_report(request: Request, report_date: str, user: str = Depends(requir
             "token": publish_token(report_date),
         },
     )
+
+
+# --- Design preview: the same templates with fictional rows. Disabled unless DESIGN_PREVIEW=1. ---
+
+def _preview_only() -> None:
+    if not DESIGN_PREVIEW:
+        raise HTTPException(status_code=404, detail="Not found")
+
+
+def _preview(request: Request, name: str, context: dict) -> HTMLResponse:
+    return templates.TemplateResponse(request=request, name=name, context={"app_name": APP_NAME, "preview": True, **context})
+
+
+@app.get("/design", include_in_schema=False)
+def design_redirect():
+    _preview_only()
+    return RedirectResponse(url="/design/", status_code=307)
+
+
+@app.get("/design/", response_class=HTMLResponse, include_in_schema=False)
+def design_home(request: Request):
+    _preview_only()
+    extras = {"headline": design_sample.HEADLINE, "standfirst": design_sample.STANDFIRST, "developments": design_sample.DEVELOPMENTS,
+              "regions": design_sample.REGIONS, "changes": design_sample.CHANGES}
+    return _preview(request, "index.html", pages.home_context(design_sample.ROWS, rendered, pages.PREVIEW_URLS, extras))
+
+
+@app.get("/design/rapport/{report_date}", response_class=HTMLResponse, include_in_schema=False)
+def design_report(request: Request, report_date: str):
+    _preview_only()
+    row = next((r for r in design_sample.ROWS if r["report_date"] == report_date), None)
+    if row is None:
+        raise HTTPException(status_code=404, detail="Report not found")
+    extras = {"headline": design_sample.HEADLINE, "standfirst": design_sample.STANDFIRST} if row is design_sample.LATEST else {}
+    return _preview(request, "report.html", pages.report_context(row, design_sample.ROWS, rendered, pages.PREVIEW_URLS, extras))
+
+
+@app.get("/design/arkiv", response_class=HTMLResponse, include_in_schema=False)
+def design_archive(request: Request, manad: str | None = None, amne: str | None = None, q: str | None = None):
+    _preview_only()
+    return _preview(request, "archive.html", pages.archive_context(design_sample.ROWS, pages.PREVIEW_URLS, manad, amne, q))
+
+
+@app.get("/design/metod", response_class=HTMLResponse, include_in_schema=False)
+def design_method(request: Request):
+    _preview_only()
+    return _preview(request, "method.html", {"urls": pages.PREVIEW_URLS, "section": "method"})
+
+
+@app.get("/design/typografi", response_class=HTMLResponse, include_in_schema=False)
+def design_typography(request: Request):
+    _preview_only()
+    return _preview(request, "typography.html", pages.typography_context(pages.PREVIEW_URLS))

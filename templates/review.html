@@ -44,7 +44,7 @@
           {% for o in review.unresolved_objections %}
             <tr>
               <td>{{ o.id }}{% if o.id in review.added_objections %} <span class="badge warn">tillagd av systemet</span>{% endif %}</td>
-              <td>{{ o.severity }}</td><td>{{ o.target }}</td><td>{{ o.type }}</td><td>{{ o.text }}</td>
+              <td>{{ o.severity | term }}</td><td>{{ o.target }}</td><td>{{ o.type | term }}</td><td>{{ o.text }}</td>
             </tr>
           {% endfor %}
           </tbody>
@@ -72,9 +72,9 @@
             <tr>
               <td>{{ c.id }}</td>
               <td>{{ c.text }}{% if c.attributed_to %} <span class="muted">({{ c.attributed_to }})</span>{% endif %}</td>
-              <td>{{ c.kind }}</td>
-              <td>{{ c.classification }}{% if c.downgraded_from %} <span class="badge warn">nedgraderad från {{ c.downgraded_from }}</span>{% endif %}</td>
-              <td>{{ c.change }}{% if c.changed_from %} <span class="badge">rättad från {{ c.changed_from }}</span>{% endif %}</td>
+              <td>{{ c.kind | term }}</td>
+              <td>{{ c.classification | term }}{% if c.downgraded_from %} <span class="badge warn">nedgraderad från {{ c.downgraded_from | term | lower }}</span>{% endif %}</td>
+              <td>{{ c.change | term }}{% if c.changed_from %} <span class="badge">rättad från {{ c.changed_from | term | lower }}</span>{% endif %}</td>
               <td>{{ c.sources | join(", ") }}</td>
             </tr>
           {% endfor %}
@@ -84,7 +84,7 @@
         <p class="muted">Inga påståenden registrerades.</p>
       {% endif %}
       {% if review.assessment.article5 %}
-        <p><strong>Artikel 5-kategori:</strong> {{ review.assessment.article5.category }} – {{ review.assessment.article5.reasoning }}</p>
+        <p><strong>Artikel 5-kategori:</strong> {{ review.assessment.article5.category | term }} – {{ review.assessment.article5.reasoning }}</p>
       {% endif %}
     </section>
 

@@ -117,11 +117,11 @@ def test_the_review_page_requires_the_editor_login_and_a_real_report(client):
 def test_the_review_page_shows_what_an_editor_needs_to_decide(client):
     linked_draft(client)
     page = client.get("/admin/reports/2026-11-07/review", auth=EDITOR).text
-    assert "Olösta invändningar" in page and "O1" in page and "decisive" in page
+    assert "Olösta invändningar" in page and "O1" in page and "Avgörande" in page and "Källstöd saknas" in page
     assert "tillagd av systemet" in page                              # the writer omitted it, the system added it
-    assert "nedgraderad från confirmed" in page                        # one non-primary source cannot confirm
+    assert "nedgraderad från bekräftad" in page and "Trovärdig men obekräftad" in page                        # one non-primary source cannot confirm
     assert "insufficient_verification" in page                         # warning surfaced
-    assert "Artikel 5-kategori" in page and "no_basis" in page
+    assert "Artikel 5-kategori" in page and "Inget underlag" in page
     assert 'href="https://news.example.test/a"' in page and "Nyhetsbyrå" in page
     assert "main_analysis" in page and "main / –" in page             # model step table: role, provider / model
     assert 'name="ack_review"' in page and "required" in page

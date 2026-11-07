@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block title %}Arkiv · {{ app_name }}{% endblock %}
+{% block content %}
+  <header class="page-head">
+    <p class="kicker">Arkiv</p>
+    <h1>Tidigare rapporter</h1>
+    <p class="standfirst">Alla publicerade dagliga rapporter, med de senaste först.</p>
+  </header>
+
+  <form class="filters" method="get" action="{{ urls.archive }}" role="search" aria-label="Filtrera arkivet">
+    <div class="field">
+      <label for="f-manad">Månad</label>
+      <select id="f-manad" name="manad">
+        <option value="">Alla månader</option>
+        {% for value, text in months %}<option value="{{ value }}"{% if flt.month == value %} selected{% endif %}>{{ text }}</option>{% endfor %}
+      </select>
+    </div>
+    {% if topics %}
+    <div class="field">
+      <label for="f-amne">Ämne</label>
+      <select id="f-amne" name="amne">
+        <option value="">Alla ämnen</option>
+        {% for t in topics %}<option value="{{ t }}"{% if flt.topic == t %} selected{% endif %}>{{ t }}</option>{% endfor %}
+      </select>
+    </div>
+    {% endif %}
+    <div class="field field--wide">
+      <label for="f-q">Sök i rubrik och sammanfattning</label>
+      <input id="f-q" type="search" name="q" value="{{ flt.q }}" maxlength="80" autocomplete="off">
+    </div>
+    <div class="actions">
+      <button type="submit">Filtrera</button>
+      {% if flt.active %}<a class="button button--quiet" href="{{ urls.archive }}">Rensa filter</a>{% endif %}
+    </div>
+  </form>
+
+  <p class="result-count meta" role="status">{{ items | length }} av {{ total }} rapporter{% if flt.active %} matchar filtret{% endif %}</p>
+
+  {% if items %}
+    <ol class="archive-list">
+      {% for item in items %}
+        <li class="archive-row">
+          <time class="meta" datetime="{{ item.date }}">{{ item.date | short_date }}</time>
+          <div>
+            <h2><a href="{{ item.href }}">{{ item.title }}</a></h2>
+            {% if item.summary %}<p>{{ item.summary }}</p>{% endif %}
+            {% if item.topics %}<ul class="topics" aria-label="Ämnen">{% for t in item.topics %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+          </div>
+        </li>
+      {% endfor %}
+    </ol>
+  {% else %}
+    <p class="notice">Inga rapporter matchar filtret. <a href="{{ urls.archive }}">Visa alla rapporter</a>.</p>
+  {% endif %}
+{% endblock %}

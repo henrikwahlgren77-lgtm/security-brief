@@ -4,20 +4,58 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#282B28">
+  <meta name="description" content="Daglig, källbelagd säkerhetsanalys av Norden, Östersjöregionen, Ryssland och NATO, baserad på öppna källor.">
+  {% if preview %}<meta name="robots" content="noindex, nofollow">{% endif %}
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="preload" href="/static/fonts/ibm-plex-sans-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/newsreader-latin-500-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/ibm-plex-mono-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/fonts/fonts.css">
   <link rel="stylesheet" href="/static/site.css">
+  {% block head %}{% endblock %}
 </head>
 <body>
-  <header class="site-header">
-    <a class="wordmark" href="/">SECURITY <span>BRIEF</span></a>
-    <span class="header-note">NORRA EUROPA · ÖPPNA KÄLLOR</span>
+  <a class="skip" href="#main">Hoppa till innehållet</a>
+  {% if preview %}
+  <div class="preview-banner" role="note">
+    <div class="wrap">
+      <strong>Designexempel</strong>
+      <span>Allt innehåll på den här sidan är påhittat. Inga verkliga händelser, källor eller bedömningar.</span>
+    </div>
+  </div>
+  {% endif %}
+  <header class="masthead">
+    <div class="masthead-top">
+      <div class="wrap meta">
+        <span>Daglig lägesbild · öppna källor</span>
+        <span>Norden · Östersjön · Ryssland · NATO</span>
+      </div>
+    </div>
+    <div class="wrap masthead-main">
+      <a class="wordmark" href="{{ urls.home }}" aria-label="Northern Europe Security Brief, till startsidan">
+        <span class="wordmark-name">Northern Europe <b>Security Brief</b></span>
+      </a>
+      <nav class="nav" aria-label="Huvudnavigering">
+        <a href="{{ urls.home }}"{% if section == "home" %} aria-current="page"{% endif %}>Idag</a>
+        <a href="{{ urls.archive }}"{% if section == "archive" %} aria-current="page"{% endif %}>Arkiv</a>
+        <a href="{{ urls.method }}"{% if section == "method" %} aria-current="page"{% endif %}>Metod</a>
+        {% if preview %}<a href="{{ urls.typography }}"{% if section == "typography" %} aria-current="page"{% endif %}>Typografi</a>{% endif %}
+      </nav>
+    </div>
   </header>
-  <main class="page">
+  <main id="main" class="page wrap">
     {% block content %}{% endblock %}
   </main>
   <footer class="site-footer">
-    <span>Analys baserad på offentligt tillgänglig information.</span>
-    <span>Fakta, myndighetsbedömningar och egen analys ska hållas isär.</span>
+    <div class="wrap">
+      <p>Analys baserad på offentligt tillgänglig information. Fakta, myndighetsbedömningar, medierapportering och egen analys hålls isär och märks tydligt.</p>
+      <nav aria-label="Sidfot">
+        <a href="{{ urls.archive }}">Arkiv</a>
+        <a href="{{ urls.method }}">Metod och källhantering</a>
+      </nav>
+      <p class="meta">Northern Europe Security Brief</p>
+    </div>
   </footer>
 </body>
 </html>

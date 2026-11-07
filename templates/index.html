@@ -1,50 +1,135 @@
 {% extends "base.html" %}
-{% block title %}Senaste briefen · {{ app_name }}{% endblock %}
+{% from "_macros.html" import label, level %}
+{% block title %}{% if latest %}{{ headline }} · {% endif %}{{ app_name }}{% endblock %}
 {% block content %}
-  <section class="intro">
-    <p class="eyebrow">DAGLIG LÄGESBILD</p>
-    <h1>Säkerhetsbrief<br><span>Norra Europa</span></h1>
-    <p class="lead">Sverige, Östersjöområdet, Ryssland och NATO. En källbelagd sammanställning av utvecklingen och dess möjliga betydelse.</p>
+{% if latest %}
+  <div class="dateline meta">
+    <span><strong>{{ latest.report_date | long_date }}</strong></span>
+    {% if published_time %}<span>Publicerad {{ published_time }}</span>{% endif %}
+    {% if number %}<span>Utgåva nr {{ number }}</span>{% endif %}
+  </div>
+
+  <section class="lede" aria-labelledby="lede-title">
+    <div>
+      <p class="kicker">Dagens brief</p>
+      <h1 id="lede-title">{{ headline }}</h1>
+      {% if standfirst %}<p class="standfirst">{{ standfirst }}</p>{% endif %}
+      {% if developments %}
+        <h2 class="sr-only">Dagens viktigaste utvecklingar</h2>
+        <ol class="developments">
+          {% for d in developments %}
+            <li>
+              <div>
+                {% if d.label %}{{ label(d.kind, d.label) }}{% endif %}
+                <p>{{ d.text }}</p>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% endif %}
+      <a class="cta" href="{{ report_href }}">Läs hela rapporten<span>{{ report_facts.minutes }} minuters läsning · {{ report_facts.sources }} källor</span></a>
+    </div>
+    <aside aria-label="Om utgåvan">
+      <div class="aside-block">
+        <h2>Om utgåvan</h2>
+        <dl class="facts">
+          <dt>Datum</dt><dd>{{ latest.report_date }}</dd>
+          {% if published_time %}<dt>Publicerad</dt><dd>{{ published_time }}</dd>{% endif %}
+          {% if number %}<dt>Utgåva</dt><dd>nr {{ number }}</dd>{% endif %}
+          <dt>Källor</dt><dd>{{ report_facts.sources }}</dd>
+          <dt>Granskad</dt><dd>av redaktör</dd>
+        </dl>
+      </div>
+      <div class="aside-block">
+        <h2>Så märks uppgifterna</h2>
+        <p class="section-note">Varje uppgift har en etikett som säger vad den är. Färg används aldrig ensam.</p>
+        <p><a class="text-link" href="{{ urls.method }}">Läs om metoden</a></p>
+      </div>
+    </aside>
   </section>
 
-  {% if latest %}
-    <section class="latest">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">SENASTE RAPPORT</p>
-          <h2>{{ latest.title }}</h2>
-        </div>
-        <time>{{ latest.report_date }}</time>
-      </div>
-      <article class="prose">{{ latest_html | safe }}</article>
-      <a class="text-link" href="/reports/{{ latest.report_date }}">Visa rapporten separat →</a>
+  {% if regions or changes %}
+  <div class="home-band section section--primary">
+    {% if regions %}
+    <section aria-labelledby="regions-title">
+      <div class="section-head"><h2 id="regions-title">Regional lägesbild</h2><span class="meta">Bedömt läge, inte prognos</span></div>
+      <table class="regions">
+        <caption class="sr-only">Regional lägesbild</caption>
+        <thead><tr><th scope="col">Region</th><th scope="col">Läge</th><th scope="col">Jämfört med igår</th><th scope="col">Kommentar</th></tr></thead>
+        <tbody>
+          {% for r in regions %}
+            <tr>
+              <th scope="row">{{ r.name }}</th>
+              <td data-label="Läge">{{ level(r.level[0], r.level[1]) }}</td>
+              <td data-label="Mot igår">{{ label(r.change[0], r.change[1]) }}</td>
+              <td data-label="Kommentar">{{ r.comment }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </section>
-  {% else %}
-    <section class="empty">
-      <p class="eyebrow">INVÄNTAR FÖRSTA PUBLICERING</p>
-      <h2>Ingen rapport har publicerats ännu.</h2>
-      <p>När rapportflödet är anslutet visas den senaste briefen här.</p>
+    {% endif %}
+    {% if changes %}
+    <section aria-labelledby="changes-title">
+      <div class="section-head"><h2 id="changes-title">Sedan föregående rapport</h2></div>
+      <ul class="changes">
+        {% for c in changes %}<li>{{ label(c.kind, c.label) }}<span>{{ c.text }}</span></li>{% endfor %}
+      </ul>
     </section>
+    {% endif %}
+  </div>
   {% endif %}
 
-  <section class="archive">
-    <div class="section-heading">
-      <div><p class="eyebrow">TIDIGARE UTGÅVOR</p><h2>Arkiv</h2></div>
-      <span class="count">{{ reports | length }} rapporter</span>
-    </div>
-    {% if reports %}
-      <ul class="report-list">
-        {% for item in reports %}
-          <li>
-            <a href="/reports/{{ item.report_date }}">
-              <span>{{ item.title }}</span>
-              <time>{{ item.report_date }}</time>
-            </a>
-          </li>
-        {% endfor %}
-      </ul>
-    {% else %}
-      <p class="muted">Arkivet fylls på när rapporter publiceras.</p>
-    {% endif %}
+  {% if situation_text %}
+  <section class="section" aria-labelledby="situation-title">
+    <div class="section-head"><h2 id="situation-title">Säkerhetsläget i Norden och Östersjöregionen</h2><a class="text-link" href="{{ report_href }}#lagesbild">Läs vidare</a></div>
+    <p class="prose">{{ situation_text }}</p>
   </section>
+  {% endif %}
+
+  {% if analysis_text %}
+  <section class="section section--primary analysis" aria-labelledby="analysis-title">
+    <div>{{ label("analysis", "Analys") }}<h2 id="analysis-title" class="sr-only">Redaktionell analys</h2><p class="meta">Publikationens egen bedömning</p></div>
+    <div>
+      <p class="analysis-text">{{ analysis_text }}</p>
+      <p><a class="text-link" href="{{ report_href }}#analys">Hela analysen</a></p>
+    </div>
+  </section>
+  {% endif %}
+{% else %}
+  <section class="lede">
+    <div>
+      <p class="kicker">Inväntar första publicering</p>
+      <h1>Ingen rapport har publicerats ännu.</h1>
+      <p class="standfirst">När den första briefen har granskats och publicerats visas den här.</p>
+    </div>
+  </section>
+{% endif %}
+
+<section class="section section--primary" aria-labelledby="recent-title">
+  <div class="section-head"><h2 id="recent-title">Tidigare utgåvor</h2><a class="text-link" href="{{ urls.archive }}">Hela arkivet ({{ total }})</a></div>
+  {% if recent %}
+    <ul class="issue-list">
+      {% for item in recent %}
+        <li><a href="{{ item.href }}">
+          <span class="meta">{{ item.date | short_date }}</span>
+          <span><span class="t">{{ item.title }}</span>{% if item.summary %}<br><span class="s">{{ item.summary }}</span>{% endif %}</span>
+        </a></li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">Arkivet fylls på när fler rapporter har publicerats.</p>
+  {% endif %}
+</section>
+
+<section class="section" aria-labelledby="legend-title">
+  <div class="section-head"><h2 id="legend-title">Så läser du briefen</h2><a class="text-link" href="{{ urls.method }}">Metod och källhantering</a></div>
+  <dl class="legend">
+    <div><dt>{{ label("facts", "Bekräftat") }}</dt><dd>Styrkt av primärkälla eller tillräckligt oberoende verifiering.</dd></div>
+    <div><dt>{{ label("official", "Myndighetsbedömning") }}</dt><dd>Vad en myndighet eller regering bedömer eller hävdar. Inte i sig oberoende verifierat.</dd></div>
+    <div><dt>{{ label("media", "Medierapportering") }}</dt><dd>Rapporterat men inte bekräftat av primärkälla.</dd></div>
+    <div><dt>{{ label("analysis", "Analys") }}</dt><dd>Publikationens egen bedömning, skild från fakta.</dd></div>
+    <div><dt>{{ label("uncertainty", "Osäkerhet") }}</dt><dd>Vad som är oklart, motstridigt eller saknas.</dd></div>
+  </dl>
+</section>
 {% endblock %}

@@ -59,6 +59,10 @@ curl -X POST http://127.0.0.1:8098/api/reports \
 
 Keep the ingestion token private. The endpoint is intended for a trusted publisher, not a browser. Ingestion never publishes a report; every submission and update sets its status to `draft`. An editor signs in at `/admin` and publishes only after checking source links, separating verifiable facts from official assessments and editorial analysis, and reviewing the report for sensitive operational detail.
 
+## Design
+
+The visual identity, typography (self-hosted Newsreader and IBM Plex under the SIL OFL) and component rules are documented in [docs/design-system.md](docs/design-system.md), with the research behind them in [docs/design-research.md](docs/design-research.md) and licences in [docs/fonts.md](docs/fonts.md). To look at the design with fictional sample content, run locally with `DESIGN_PREVIEW=1`; it is off by default and must never be enabled on the public site.
+
 ## Configuration and data
 
 See `.env.example`. Do not commit `.env`, database files, credentials, API tokens, OAuth refresh tokens, or generated reports. SQLite is stored in the Docker volume `brief_data`.

@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% from "_macros.html" import label %}
+{% block title %}Metod och källhantering · {{ app_name }}{% endblock %}
+{% block content %}
+  <header class="page-head">
+    <p class="kicker">Metod</p>
+    <h1>Så tas briefen fram</h1>
+    <p class="standfirst">En daglig, källbelagd lägesbild av Norden och Östersjöregionen, byggd på öppna källor och granskad av en människa innan den publiceras.</p>
+  </header>
+  <div class="method section">
+    <nav aria-label="Innehåll på sidan" class="toc"><ol class="toc-desktop"><li class="kicker toc-title">På den här sidan</li>
+      <li><a href="#kallor">Källor</a></li><li><a href="#etiketter">Så märks uppgifterna</a></li><li><a href="#analys">Hur analysen tas fram</a></li><li><a href="#granskning">Granskning och publicering</a></li><li><a href="#avgransningar">Avgränsningar</a></li></ol></nav>
+    <div class="prose">
+      <h2 id="kallor">Källor</h2>
+      <p>Briefen bygger enbart på offentligt tillgängliga källor. Vi prioriterar i den här ordningen: nationella myndigheter, säkerhetstjänster, försvarsmakter och officiella dokument; NATO, EU och andra internationella organisationer; etablerade nyhetsmedier med egen rapportering; specialiserade försvars- och säkerhetspublikationer.</p>
+      <p>Varje källa i en rapport är länkad, och länken leder till en sida som faktiskt har hämtats och kontrollerats. Två medier som bygger på samma pressmeddelande eller nyhetsbyrå räknas som en källa, inte två.</p>
+
+      <h2 id="etiketter">Så märks uppgifterna</h2>
+      <p>Fakta, myndigheters bedömningar, medierapportering och vår egen analys hålls isär. Varje avsnitt har en etikett som säger vad uppgifterna är. Färg används som stöd, aldrig ensam.</p>
+      <dl class="legend legend--stack">
+        <div><dt>{{ label("facts", "Bekräftat") }}</dt><dd>Styrkt av en relevant primärkälla eller tillräckligt oberoende verifiering.</dd></div>
+        <div><dt>{{ label("official", "Myndighetsbedömning") }}</dt><dd>Vad en myndighet eller regering bedömer eller hävdar. Att en myndighet påstår något betyder inte att det är oberoende verifierat, och vi anger alltid vem som står bakom bedömningen.</dd></div>
+        <div><dt>{{ label("media", "Medierapportering") }}</dt><dd>Uppgifter som rapporterats men inte kunnat bekräftas av en primärkälla.</dd></div>
+        <div><dt>{{ label("analysis", "Analys") }}</dt><dd>Publikationens egen bedömning. Den är skild från fakta och kan ha fel.</dd></div>
+        <div><dt>{{ label("uncertainty", "Osäkerhet") }}</dt><dd>Det som är oklart, motstridigt eller inte gick att verifiera.</dd></div>
+      </dl>
+
+      <h2 id="analys">Hur analysen tas fram</h2>
+      <p>Utkastet tas fram med stöd av språkmodeller. Källorna hämtas först, och modellerna får bara arbeta med det som faktiskt hämtats. En första modell gör huvudanalysen. En annan, oberoende modell försöker sedan motbevisa den. Invändningar som inte kan avfärdas redovisas under Osäkerheter och luckor i stället för att döljas.</p>
+      <p>Vi bedömer vad som har hänt och vad det kan betyda, men anger inga procentsatser för krigsrisk eller artikel 5. Artikel 5 är ett politiskt och juridiskt beslut inom NATO, och en enskild händelse kopplas inte automatiskt till den.</p>
+
+      <h2 id="granskning">Granskning och publicering</h2>
+      <p>Ingen rapport publiceras automatiskt. En redaktör läser varje utkast, kontrollerar källorna och bedömer att innehållet skiljer fakta från bedömningar och inte innehåller känsliga operativa detaljer. Om en publicerad rapport ändras går den tillbaka till utkast tills den har granskats på nytt.</p>
+
+      <h2 id="avgransningar">Avgränsningar</h2>
+      <p>Vi använder inga sekretessbelagda eller röjda uppgifter och publicerar inte exakta positioner för pågående militära insatser eller sårbarhetsdetaljer som kan utnyttjas. Briefen är en lägesbild, inte en prognos.</p>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import label %}
+{% block title %}Typografi, tre riktningar · {{ app_name }}{% endblock %}
+{% block head %}<link rel="stylesheet" href="/static/design.css">{% endblock %}
+{% block content %}
+  <header class="page-head">
+    <p class="kicker">Designunderlag</p>
+    <h1>Tre typografiska riktningar</h1>
+    <p class="standfirst">Samma innehåll i alla tre. Rekommendation: <strong>A</strong>. Motivering och mätningar finns i <code>docs/design-research.md</code>.</p>
+  </header>
+
+  <div class="type-grid">
+    {% for d in directions %}
+    <article class="type-card dir-{{ d.id }}" aria-labelledby="dir-{{ d.id }}-name">
+      <p class="meta" id="dir-{{ d.id }}-name"><strong>{{ d.id | upper }}</strong> · {{ d.name }}{% if d.recommended %} · rekommenderad{% endif %}</p>
+      <p class="d-mast">Northern Europe Security Brief</p>
+      <h2 class="d-title">Säkerhetsläget i norra Europa förändras</h2>
+      <p class="d-sub">Dagens bedömning och vad som förändrats sedan igår</p>
+      <p class="d-lede">Militär aktivitet, ökade säkerhetspolitiska spänningar och förändringar i den regionala hotbilden påverkar utvecklingen i Norden och Östersjöregionen.</p>
+      <p class="d-meta">Söndag 8 november 2026 · 07:42 CET · Utgåva nr 312 · 9 källor</p>
+      <h3 class="d-section">Verifierade fakta</h3>
+      <p class="d-body">Utvecklingen behöver bedömas i ett större sammanhang. En enskild händelse behöver inte innebära en förändrad hotbild, men flera samverkande indikatorer kan motivera en fördjupad analys.</p>
+      <p class="d-source"><span class="d-meta">Källa 3</span> Exempelmyndigheten, lägesbild 7 november 2026 <span class="d-meta">kalla.example</span></p>
+      <p class="d-tags">{{ label("facts", "Bekräftat") }} {{ label("official", "Myndighetsbedömning") }} {{ label("change", "Förändring") }}</p>
+      <p class="d-fonts meta">{{ d.fonts }}</p>
+    </article>
+    {% endfor %}
+  </div>
+
+  <h2 class="spec-title">Typsnitt som mätts</h2>
+  <p class="muted">Mätt på filerna som levereras (latin-delmängden, vikt 400). x-höjd och versalhöjd är andelar av em.</p>
+  <table class="type-spec">
+    <thead><tr><th>Typsnitt</th><th>x-höjd</th><th>Versalhöjd</th><th>å ä ö</th><th>Licens</th><th>Beslut</th></tr></thead>
+    <tbody>
+      {% for r in measured %}<tr><th scope="row">{{ r.name }}</th><td>{{ r.x }}</td><td>{{ r.cap }}</td><td>{{ r.sv }}</td><td>{{ r.license }}</td><td>{{ r.verdict }}</td></tr>{% endfor %}
+    </tbody>
+  </table>
+{% endblock %}
