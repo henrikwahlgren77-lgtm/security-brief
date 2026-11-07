@@ -72,3 +72,14 @@ Failures to select an adapter, call it, or receive a non-empty response stop the
 ## Integration boundary
 
 The ChatGPT scheduled brief does not automatically call this API or send Gmail by itself. A separate, explicitly configured publisher is required. Do not add credentials to GitHub Actions or this repository until the deployment and secret-handling design is reviewed.
+
+## Source collection
+
+`app.analysis.fetcher.SourceFetcher` retrieves pages itself from hosts listed in `config/approved_sources.toml`; a model never supplies content or URLs that are trusted on its own. Each fetch attempt, including failures, is stored in the `sources` table (`app.analysis.sources.SourceStore`) with name, title, URL, canonical URL, stated publication time, event date, country, region, topic, origin type and original URL, fetch time, status, content hash and extracted text.
+
+- Only `https` on the standard port is fetched. The host and every redirect target must be approved, and hosts resolving to non-public addresses are refused. Size, time and redirect count are limited.
+- Publication time is recorded only when the page states it. Event date is set only by a caller that has established it. The fetch time is always recorded. The three are never merged.
+- `independent_origins` groups republications and identical content under one origin so they count as one independent source.
+- `find_unfetched_urls` lists URLs in text that have no successful recorded fetch; analysis output that cites any such URL must be rejected.
+- The fetcher is meant to run in a separate scheduled job, not in the web container. The approved list is an initial proposal for editorial review. Media outlets are not yet listed.
+- Known limit: DNS is resolved once for the address check and again by the HTTP client (see the `fetcher` module docstring).
