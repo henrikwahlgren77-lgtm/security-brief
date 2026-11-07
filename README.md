@@ -1,6 +1,6 @@
 # Security Brief
 
-A small self-hosted publication service for the Northern Europe daily security brief.
+A small, self-hosted publication service for the Northern Europe daily security brief.
 
 ## Principles
 
@@ -12,10 +12,11 @@ A small self-hosted publication service for the Northern Europe daily security b
 
 ## Stack
 
-- Python 3.12+
+- Python 3.12
 - FastAPI + Jinja2
 - SQLite
-- Nginx reverse proxy + HTTPS (deployment guide to follow)
+- Docker Compose
+- Nginx reverse proxy + HTTPS (configured on the VPS)
 
 ## Local development
 
@@ -30,23 +31,35 @@ uvicorn app.main:app --reload
 
 Open http://127.0.0.1:8000. The report archive is private unless `PUBLIC_REPORTS=true`.
 
+## VPS deployment (after server inventory and DNS)
+
+```bash
+git clone https://github.com/henrikwahlgren77-lgtm/security-brief.git
+cd security-brief
+cp .env.example .env
+# Edit .env and generate unique secrets before starting.
+docker compose up -d --build
+```
+
+The app binds to host loopback at `127.0.0.1:8098`. Configure the existing host reverse proxy to forward HTTPS traffic for `brief.kinetic.nu` to that address. Do not expose port 8000 or 8098 publicly.
+
 ## Ingest a report
 
 Send Markdown as JSON to `POST /api/reports`:
 
 ```bash
-curl -X POST http://127.0.0.1:8000/api/reports \
+curl -X POST http://127.0.0.1:8098/api/reports \
   -H "Authorization: Bearer $INGEST_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"report_date":"2026-11-08","title":"Säkerhetsbrief – 8 november 2026","markdown":"## Sammanfattning\n\nRapporttext..."}'
 ```
 
-The endpoint is intended for a trusted automation running outside the public browser. Keep the token private.
+Keep the ingestion token private. The endpoint is intended for a trusted publisher, not a browser.
 
-## Configuration
+## Configuration and data
 
-See `.env.example`. Do not commit `.env`, database files, credentials, API tokens, OAuth refresh tokens, or generated reports.
+See `.env.example`. Do not commit `.env`, database files, credentials, API tokens, OAuth refresh tokens, or generated reports. SQLite is stored in the Docker volume `brief_data`.
 
 ## Current scope
 
-This is the first application foundation: report storage, archive, rendering, access control, and ingestion API. Automated research, Gmail delivery, scheduling, deployment, backups, and DNS are separate integration steps and are not active yet.
+The initial application foundation includes report storage, archive, sanitized Markdown rendering, access control, security headers, and a token-protected ingestion API. Automated research, Gmail delivery, the scheduled publisher, deployment, backups, and DNS are separate integration steps and are not active yet.
