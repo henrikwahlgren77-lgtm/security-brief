@@ -31,7 +31,7 @@ uvicorn app.main:app --reload
 
 Open http://127.0.0.1:8000 for the public site and http://127.0.0.1:8000/admin for the editorial queue. Configure a unique `APP_ADMIN_USER`, `APP_ADMIN_PASSWORD`, and `INGEST_TOKEN` before starting. Reports remain drafts until an authenticated editor publishes them.
 
-## VPS deployment (after server inventory and DNS)
+## VPS deployment
 
 ```bash
 git clone https://github.com/henrikwahlgren77-lgtm/security-brief.git
@@ -42,6 +42,8 @@ docker compose up -d --build
 ```
 
 The app binds to host loopback at `127.0.0.1:8098`. Configure the existing host reverse proxy to forward HTTPS traffic for `brief.kinetic.nu` to that address. Do not expose port 8000 or 8098 publicly.
+
+For the server setup handoff, inventory sequence, deployment checks, and rollback boundaries, see [docs/server-setup-handoff.md](docs/server-setup-handoff.md). The domain is reported ready; the VPS has not been changed or deployed.
 
 ## Ingest a report
 
@@ -62,4 +64,4 @@ See `.env.example`. Do not commit `.env`, database files, credentials, API token
 
 ## Current scope
 
-The application includes a public archive of published reports, sanitized Markdown rendering, security headers, token-protected draft ingestion, and authenticated editorial publishing. Automated research, Gmail delivery, the scheduled publisher, deployment, backups, and DNS are separate integration steps and are not active yet.
+The application includes a public archive of published reports, sanitized Markdown rendering, security headers, token-protected draft ingestion, and authenticated editorial publishing. The domain `brief.kinetic.nu` is reported ready. The application has not been deployed. Automated research, Gmail delivery, the scheduled publisher, and backups are not active yet.
