@@ -83,3 +83,13 @@ The ChatGPT scheduled brief does not automatically call this API or send Gmail b
 - `find_unfetched_urls` lists URLs in text that have no successful recorded fetch; analysis output that cites any such URL must be rejected.
 - The fetcher is meant to run in a separate scheduled job, not in the web container. The approved list is an initial proposal for editorial review. Media outlets are not yet listed.
 - Known limit: DNS is resolved once for the address check and again by the HTTP client (see the `fetcher` module docstring).
+
+## Prompts and provider adapters
+
+- Prompts live in `prompts/<role>/v<N>.md`, one directory per role (`collection`, `main_analysis`, `counter_analysis`, `final_report`). A run records the version and SHA-256 of each prompt it used. Never edit a used version in place; add the next one.
+- Prompts instruct models to cite sources only as `[S#]`. `app.analysis.context.format_sources_for_prompt` assigns the ids and delimits page text as untrusted data; `expand_citations` turns ids back into links to URLs the collector actually fetched and reports unknown ids. `find_unfetched_urls` still catches any URL a model writes itself.
+- `app.analysis.adapters` contains `OpenAIAdapter`, `AnthropicAdapter` and `MistralAdapter`, thin HTTPS clients over `httpx` that implement the neutral `complete()` contract. Choosing vendor and model per role is configuration only (see `.env.example`). Retries (3 attempts, `Retry-After` honoured and capped), timeouts, truncated/refused/empty answers and error text are handled in one shared base class. Error messages never contain request content, response bodies or keys.
+- Keys are read from the process environment at call time. Only the analysis job needs them; the web container does not.
+- Tokens and latency are returned per call. Cost is computed only from prices the operator configures; no vendor prices are built into the code.
+- A counter-analysis on the same provider and model as the main analysis produces a warning on the draft.
+- Why not the vendor SDKs or a gateway library: see `docs/provider-review.md`.

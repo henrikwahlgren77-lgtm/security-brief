@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from .prompts import PromptLibrary
 from .providers import (
     AnalysisConfig,
     AnalysisRole,
@@ -12,6 +13,7 @@ from .providers import (
     ProviderRegistry,
     ProviderRequest,
     ProviderResponse,
+    estimate_cost,
 )
 
 
@@ -24,6 +26,9 @@ class EditorialStatus(StrEnum):
 class StageResult:
     role: AnalysisRole
     response: ProviderResponse
+    prompt_version: str = ""
+    prompt_sha256: str = ""
+    estimated_cost: float | None = None  # None = prices or token counts unknown
 
 
 @dataclass(frozen=True, slots=True)
@@ -34,6 +39,11 @@ class AnalysisDraft:
     counter_analysis: StageResult
     final_report: StageResult
     status: EditorialStatus = EditorialStatus.DRAFT
+    warnings: tuple[str, ...] = ()
+
+    @property
+    def stages(self) -> tuple[StageResult, ...]:
+        return (self.collection, self.main_analysis, self.counter_analysis, self.final_report)
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,13 +54,21 @@ class PublicationApproval:
 
 
 class AnalysisPipeline:
-    def __init__(self, config: AnalysisConfig, providers: ProviderRegistry):
+    def __init__(self, config: AnalysisConfig, providers: ProviderRegistry, prompts: PromptLibrary | None = None):
         self.config = config
         self.providers = providers
+        self.prompts = prompts or PromptLibrary()
 
-    def _run(self, role: AnalysisRole, prompt: str, context: str) -> StageResult:
+    def _run(self, role: AnalysisRole, context: str) -> StageResult:
         provider, role_config = self.providers.for_role(self.config, role)
-        request = ProviderRequest(role=role, prompt=prompt, context=context, model=role_config.model)
+        prompt = self.prompts.load(role, role_config.prompt_version)
+        request = ProviderRequest(
+            role=role,
+            prompt=prompt.text,
+            context=context,
+            model=role_config.model,
+            max_output_tokens=role_config.max_output_tokens,
+        )
         try:
             response = provider.complete(request)
         except ProviderError:
@@ -60,30 +78,26 @@ class AnalysisPipeline:
             raise ProviderError(f"Provider failed during role '{role.value}'.") from exc
         if not isinstance(response, ProviderResponse) or not response.text.strip():
             raise ProviderError(f"Provider returned an empty or invalid response for role '{role.value}'.")
-        return StageResult(role=role, response=response)
+        return StageResult(
+            role=role,
+            response=response,
+            prompt_version=prompt.version,
+            prompt_sha256=prompt.sha256,
+            estimated_cost=estimate_cost(response, role_config),
+        )
 
     def analyze(self, source_material: str) -> AnalysisDraft:
         if not source_material.strip():
             raise ValueError("Source material must not be empty")
 
-        collection = self._run(
-            AnalysisRole.COLLECTION,
-            "Organize the supplied public source material; keep facts and uncertainty explicit.",
-            source_material,
-        )
-        main = self._run(
-            AnalysisRole.MAIN_ANALYSIS,
-            "Analyze the collected material, distinguish evidence from assessment, and state uncertainty.",
-            collection.response.text,
-        )
+        collection = self._run(AnalysisRole.COLLECTION, source_material)
+        main = self._run(AnalysisRole.MAIN_ANALYSIS, collection.response.text)
         counter = self._run(
             AnalysisRole.COUNTER_ANALYSIS,
-            "Independently challenge the main analysis. Identify unsupported claims, omissions, and alternatives. Do not approve or publish it.",
             f"Source material:\n{collection.response.text}\n\nMain analysis to review:\n{main.response.text}",
         )
         final = self._run(
             AnalysisRole.FINAL_REPORT,
-            "Prepare an editorial draft. Preserve uncertainty and include unresolved counter-analysis points. This is not approved for publication.",
             f"Main analysis:\n{main.response.text}\n\nIndependent counter-analysis:\n{counter.response.text}",
         )
         return AnalysisDraft(
@@ -92,7 +106,20 @@ class AnalysisPipeline:
             main_analysis=main,
             counter_analysis=counter,
             final_report=final,
+            warnings=self._independence_warnings(main, counter),
         )
+
+    @staticmethod
+    def _independence_warnings(main: StageResult, counter: StageResult) -> tuple[str, ...]:
+        a, b = main.response, counter.response
+        if a.provider == "mock" or b.provider == "mock":
+            return ()
+        if a.provider == b.provider and a.model == b.model:
+            return (
+                "The counter-analysis ran on the same provider and model as the main analysis; "
+                "it is not an independent check.",
+            )
+        return ()
 
 
 def approve_for_publication(draft: AnalysisDraft, *, approved_by: str) -> PublicationApproval:

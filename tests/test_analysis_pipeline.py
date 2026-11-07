@@ -78,7 +78,7 @@ def test_counter_analysis_is_review_input_and_never_approves_main_analysis():
 
     assert result.status is EditorialStatus.DRAFT
     assert "counter review" in provider.calls[-1].context
-    assert "do not approve" in provider.calls[2].prompt.lower()
+    assert "godkänn inte" in provider.calls[2].prompt.lower()
     with pytest.raises(ValueError, match="human editor"):
         approve_for_publication(result, approved_by=" ")
     approval = approve_for_publication(result, approved_by="editor@example.test")
