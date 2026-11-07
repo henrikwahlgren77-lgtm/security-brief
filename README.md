@@ -23,7 +23,7 @@ A small, self-hosted publication service for the Northern Europe daily security 
 ```bash
 python -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 cp .env.example .env
 # Set APP_ADMIN_USER, APP_ADMIN_PASSWORD and INGEST_TOKEN before starting.
 uvicorn app.main:app --reload
