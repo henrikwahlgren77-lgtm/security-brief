@@ -10,7 +10,7 @@ from app.analysis import (
     RoleConfig,
     approve_for_publication,
 )
-from app.analysis.mock_provider import MockProvider
+from app.analysis.mock_provider import EMPTY_COUNTER_JSON, EMPTY_MAIN_JSON, MockProvider, with_block
 
 
 def config_for(**providers):
@@ -21,8 +21,8 @@ def config_for(**providers):
 
 
 def test_provider_can_be_changed_per_role_without_pipeline_changes():
-    primary = MockProvider(["collected", "main analysis", "final draft"])
-    reviewer = MockProvider(["counter points"])
+    primary = MockProvider(["collected", with_block("main analysis", EMPTY_MAIN_JSON), "final draft"])
+    reviewer = MockProvider([with_block("counter points", EMPTY_COUNTER_JSON)])
     config = config_for(counter_analysis="reviewer")
 
     result = AnalysisPipeline(config, ProviderRegistry({"main": primary, "reviewer": reviewer})).analyze(
@@ -73,7 +73,7 @@ def test_provider_failure_stops_workflow_and_does_not_return_a_draft():
 
 
 def test_counter_analysis_is_review_input_and_never_approves_main_analysis():
-    provider = MockProvider(["collected", "main", "counter review", "final"])
+    provider = MockProvider(["collected", with_block("main", EMPTY_MAIN_JSON), with_block("counter review", EMPTY_COUNTER_JSON), "final"])
     result = AnalysisPipeline(config_for(), ProviderRegistry({"main": provider})).analyze("source")
 
     assert result.status is EditorialStatus.DRAFT

@@ -106,3 +106,20 @@ The ChatGPT scheduled brief does not automatically call this API or send Gmail b
 - Log lines (logger `app.analysis.runs`) carry run id, role, provider, model, prompt version, tokens, latency, attempts and errors, never source text or model output.
 - `python -m app.analysis.runs list|show <id>|usage` prints metadata only.
 - Stored text is as sensitive as the sources. Keep the database on the analysis host and back it up with the rest of the data (backups are not set up yet).
+
+## Assessment layer
+
+The main and counter stages (prompt version v2) return prose plus one machine-readable ```json block. `app.analysis.assessment` parses it strictly (pydantic, unknown fields rejected, ids pattern-checked, error text never echoes model output) and applies deterministic rules. A stage whose block is invalid gets one corrective retry; a second failure stops the run.
+
+Rules applied in code, after the main analysis and before the reviewer sees it:
+
+- **Evidence.** `confirmed` needs a primary source (tier 1, original) or at least two independent origins. Republications of one original, and pages with identical content, count once. Otherwise the claim is downgraded to `credible_unconfirmed`. A factual claim with no provided source becomes `unconfirmed`. Own analysis is never `confirmed`. Source ids the system never provided are flagged and ignored.
+- **Change.** Without an earlier report nothing can be `new` (it becomes `no_comparison`). A `new` claim whose sources were all used in the previous report, or whose wording nearly matches an earlier claim, becomes `continuing`. A `new` claim whose dated sources are all older than the reporting window (default 24 hours) becomes `background`. `changed`/`continuing`/`confirmation`/`denial` must reference an existing earlier claim (P#). Missing dates cannot prove newness and are reported as info.
+- **Article 5.** A category other than `no_basis` without a provided source is reset to `no_basis`. `attack` without a tier 1 source is flagged. Percentages or other numeric risk figures in the article 5 reasoning, indicators or hypotheses are flagged (no documented method exists).
+- **Disagreement.** Decisive and substantial objections from the counter-analysis must appear, by id, under "Osäkerheter och luckor". Any the writer omitted are appended by the system and recorded. Only a human editor can dismiss an objection.
+
+The calibrated claim list, not the model's own labels, is what the reviewer and the writer receive, and it is stored with the run (`analysis_runs.assessment`). The next run is shown the last *completed* run's calibrated claims as P1, P2 ... so it can mark continuations, confirmations and denials; set `use_history=False` to disable this. Unfinished or failed runs are never used as history.
+
+Issues are returned in `AnalysisDraft.warnings` for the editor; `info` items (for example "no earlier report", "no source states a date") stay in the run log only.
+
+Limits: the rules check structure, support and consistency, not truth. They cannot tell whether a primary source is itself wrong or misleading, and the text-similarity repeat check is a heuristic. The editor still has to read the draft.

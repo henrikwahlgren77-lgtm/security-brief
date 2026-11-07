@@ -1,6 +1,17 @@
 """Model-independent analysis workflow."""
 
 from .pipeline import AnalysisDraft, AnalysisPipeline, EditorialStatus, approve_for_publication
+from .assessment import (
+    AssessmentError,
+    CalibratedAssessment,
+    CounterAssessment,
+    MainAssessment,
+    PreviousContext,
+    calibrate,
+    ensure_disagreement_reported,
+    parse_counter,
+    parse_main,
+)
 from .adapters import AnthropicAdapter, MistralAdapter, OpenAIAdapter, build_registry
 from .allowlist import Allowlist
 from .context import expand_citations, format_sources_for_prompt
@@ -29,6 +40,15 @@ from .providers import (
 )
 
 __all__ = [
+    "AssessmentError",
+    "CalibratedAssessment",
+    "CounterAssessment",
+    "MainAssessment",
+    "PreviousContext",
+    "calibrate",
+    "ensure_disagreement_reported",
+    "parse_counter",
+    "parse_main",
     "RunRecord",
     "RunStore",
     "StageRecord",

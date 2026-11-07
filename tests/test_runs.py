@@ -1,3 +1,4 @@
+import json
 import logging
 from datetime import datetime, timedelta, timezone
 
@@ -14,7 +15,7 @@ from app.analysis import (
     build_registry,
 )
 from app.analysis.context import format_sources_for_prompt
-from app.analysis.mock_provider import MockProvider
+from app.analysis.mock_provider import EMPTY_COUNTER_JSON, EMPTY_MAIN_JSON, MockProvider, with_block
 from app.analysis.prompts import PromptLibrary
 from app.analysis.providers import ProviderResponse
 from app.analysis.runs import RunStore, main as runs_main
@@ -56,8 +57,8 @@ def priced_provider(texts):
 
 
 def test_successful_run_is_fully_recorded(runs):
-    provider = priced_provider(["collected", "main", "counter", "final report"])
-    config = mock_config(main_analysis=RoleConfig(provider="main", model="req-model", prompt_version="v1",
+    provider = priced_provider(["collected", with_block("main", EMPTY_MAIN_JSON), with_block("counter", EMPTY_COUNTER_JSON), "final report"])
+    config = mock_config(main_analysis=RoleConfig(provider="main", model="req-model", prompt_version="v2",
                                                   price_input_per_mtok=1.0, price_output_per_mtok=2.0))
     draft = AnalysisPipeline(config, ProviderRegistry({"main": provider}), run_store=runs).analyze("SOURCE TEXT")
 
@@ -67,9 +68,9 @@ def test_successful_run_is_fully_recorded(runs):
     assert [s.position for s in run.stages] == [1, 2, 3, 4]
     first, second = run.stages[0], run.stages[1]
     assert first.input_text == "SOURCE TEXT" and first.output_text == "collected"
-    assert second.input_text == "collected" and second.output_text == "main"
+    assert second.input_text.startswith("collected") and second.output_text.startswith("main")
     assert (second.requested_model, second.served_model) == ("req-model", "served-1")
-    assert second.prompt_version == "v1" and second.prompt_sha256 == PromptLibrary().load(AnalysisRole.MAIN_ANALYSIS).sha256
+    assert second.prompt_version == "v2" and second.prompt_sha256 == PromptLibrary().load(AnalysisRole.MAIN_ANALYSIS, "v2").sha256
     assert (second.input_tokens, second.output_tokens, second.latency_ms, second.attempts) == (100, 40, 12, 2)
     assert second.estimated_cost == pytest.approx((100 * 1.0 + 40 * 2.0) / 1_000_000)
     assert run.input_tokens == 400 and run.output_tokens == 160
@@ -149,7 +150,13 @@ def test_run_records_which_stored_sources_it_used(runs, tmp_path):
 
 def test_secrets_never_reach_the_database_or_the_log(tmp_path, caplog):
     def route(request):
-        body = {"model": "served", "choices": [{"finish_reason": "stop", "message": {"content": "answer"}}],
+        system = json.loads(request.content)["messages"][0]["content"]
+        text = "answer"
+        if system.startswith("Du är oberoende granskare"):  # match the role sentence: prompts mention each other
+            text = with_block(text, EMPTY_COUNTER_JSON)
+        elif system.startswith("Du är huvudanalytiker"):
+            text = with_block(text, EMPTY_MAIN_JSON)
+        body = {"model": "served", "choices": [{"finish_reason": "stop", "message": {"content": text}}],
                 "usage": {"prompt_tokens": 3, "completion_tokens": 2}}
         return httpx.Response(200, json=body)
 
@@ -213,7 +220,7 @@ def test_usage_by_model_aggregates_tokens_and_counts_failures(runs):
 
 
 def test_cli_prints_metadata_but_never_content(runs, capsys):
-    draft = AnalysisPipeline(mock_config(), ProviderRegistry({"main": priced_provider(["x", "y", "z", "TOP SECRET DRAFT"])}),
+    draft = AnalysisPipeline(mock_config(), ProviderRegistry({"main": priced_provider(["x", with_block("y", EMPTY_MAIN_JSON), with_block("z", EMPTY_COUNTER_JSON), "TOP SECRET DRAFT"])}),
                              run_store=runs).analyze("TOP SECRET SOURCE")
     assert runs_main(["--db", runs.path, "list"]) == 0
     assert runs_main(["--db", runs.path, "show", draft.run_id]) == 0

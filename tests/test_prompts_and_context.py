@@ -32,9 +32,12 @@ def record(url="https://www.sakerhetspolisen.se/a", text="Brödtext", **kwargs):
 
 def test_every_role_has_a_versioned_prompt_file():
     library = PromptLibrary()
+    latest = {AnalysisRole.COLLECTION: "v1", AnalysisRole.MAIN_ANALYSIS: "v2",
+              AnalysisRole.COUNTER_ANALYSIS: "v2", AnalysisRole.FINAL_REPORT: "v2"}
     for role in AnalysisRole:
+        assert library.versions(role)[0] == "v1"  # v1 is kept: used versions are never edited
         prompt = library.load(role)
-        assert prompt.version == "v1" and len(prompt.text) > 500 and len(prompt.sha256) == 64
+        assert prompt.version == latest[role] and len(prompt.text) > 500 and len(prompt.sha256) == 64
 
 
 def test_final_report_prompt_fixes_the_required_headings_in_order():

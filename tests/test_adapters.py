@@ -10,6 +10,7 @@ from app.analysis.adapters import (
     OpenAIAdapter,
     build_registry,
 )
+from app.analysis.mock_provider import EMPTY_COUNTER_JSON, EMPTY_MAIN_JSON, with_block
 from app.analysis.prompts import PromptLibrary
 
 KEY = "sk-test-SECRET-KEY-123"
@@ -57,6 +58,16 @@ def make(adapter_cls, *responses, env=ENV):
 
 def ok(body):
     return httpx.Response(200, json=body)
+
+
+def structured(payload, text):
+    """Add the machine-readable block that the main and counter stages must return."""
+    system = payload.get("system") or payload["messages"][0]["content"]
+    if system.startswith("Du är oberoende granskare"):  # match the role sentence: prompts mention each other
+        return with_block(text, EMPTY_COUNTER_JSON)
+    if system.startswith("Du är huvudanalytiker"):
+        return with_block(text, EMPTY_MAIN_JSON)
+    return text
 
 
 @pytest.mark.parametrize("adapter_cls, body, url", ADAPTERS)
@@ -183,9 +194,9 @@ def test_pipeline_runs_across_three_vendors_chosen_only_by_configuration():
         payload = json.loads(request.content)
         seen.setdefault(host, []).append(payload)
         if host == "api.anthropic.com":
-            return ok(anthropic_body(text="counter findings [S1]", model="claude-served"))
+            return ok(anthropic_body(text=structured(payload, "counter findings [S1]"), model="claude-served"))
         text = {"api.mistral.ai": "collected notes [S1]", "api.openai.com": "openai text [S1]"}[host]
-        return ok(chat_body(text=text, model=f"{host}-served"))
+        return ok(chat_body(text=structured(payload, text), model=f"{host}-served"))
 
     registry = build_registry(ENV, transport=httpx.MockTransport(route), sleep=lambda s: None)
     config = AnalysisConfig.from_env({
@@ -202,7 +213,7 @@ def test_pipeline_runs_across_three_vendors_chosen_only_by_configuration():
 
     assert [s.response.provider for s in draft.stages] == ["mistral", "openai", "anthropic", "openai"]
     assert draft.warnings == () and draft.status.value == "draft"
-    assert all(s.prompt_version == "v1" and len(s.prompt_sha256) == 64 for s in draft.stages)
+    assert all(s.prompt_version == PromptLibrary().versions(s.role)[-1] and len(s.prompt_sha256) == 64 for s in draft.stages)
     assert draft.main_analysis.estimated_cost == pytest.approx((10 * 1 + 5 * 2) / 1_000_000)
     assert draft.collection.estimated_cost is None  # no prices configured: unknown, not zero
     # The reviewer on another vendor really receives the main analysis to challenge:
@@ -216,7 +227,7 @@ def test_pipeline_runs_across_three_vendors_chosen_only_by_configuration():
 
 def test_same_vendor_and_model_for_review_is_flagged_as_not_independent():
     def route(request):
-        return ok(chat_body(text="text", model="same-model"))
+        return ok(chat_body(text=structured(json.loads(request.content), "text"), model="same-model"))
 
     registry = build_registry(ENV, transport=httpx.MockTransport(route), sleep=lambda s: None)
     config = AnalysisConfig.from_env({f"ANALYSIS_{r}_PROVIDER": "openai"
@@ -230,7 +241,7 @@ def test_unavailable_provider_stops_the_run_without_a_draft():
     def route(request):
         if request.url.host == "api.anthropic.com":
             return httpx.Response(529, json={"error": {"type": "overloaded_error"}})
-        return ok(chat_body(text="text"))
+        return ok(chat_body(text=structured(json.loads(request.content), "text")))
 
     registry = build_registry(ENV, transport=httpx.MockTransport(route), sleep=lambda s: None)
     config = AnalysisConfig.from_env({

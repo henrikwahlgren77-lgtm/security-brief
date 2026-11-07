@@ -22,6 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Iterator, Mapping, Sequence
 
+from .assessment import PreviousClaim, PreviousContext
 from .providers import AnalysisConfig, ProviderResponse
 
 logger = logging.getLogger("app.analysis.runs")
@@ -71,6 +72,7 @@ class RunRecord:
     report_status: str
     warnings: tuple[str, ...]
     stages: tuple[StageRecord, ...] = field(default_factory=tuple)
+    assessment: dict | None = None  # validated claims, objections and issues
 
     @property
     def input_tokens(self) -> int | None:
@@ -132,10 +134,14 @@ class RunStore:
                     source_material_sha256 TEXT NOT NULL,
                     report TEXT,
                     report_status TEXT NOT NULL DEFAULT 'draft',
-                    warnings TEXT NOT NULL DEFAULT '[]'
+                    warnings TEXT NOT NULL DEFAULT '[]',
+                    assessment TEXT
                 )
                 """
             )
+            columns = {row["name"] for row in connection.execute("PRAGMA table_info(analysis_runs)")}
+            if "assessment" not in columns:  # database created before structured assessments
+                connection.execute("ALTER TABLE analysis_runs ADD COLUMN assessment TEXT")
             connection.execute(
                 """
                 CREATE TABLE IF NOT EXISTS analysis_stages (
@@ -247,6 +253,42 @@ class RunStore:
             f" error={error[:MAX_ERROR_CHARS]}" if error else "",
         )
 
+    def save_assessment(self, run_id: str, assessment: Mapping) -> None:
+        """Store the validated, calibrated assessment of a run (claims, objections, issues)."""
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE analysis_runs SET assessment = ? WHERE id = ? AND status = 'running'",
+                (json.dumps(assessment, ensure_ascii=False, sort_keys=True), run_id),
+            )
+
+    def latest_previous(self, before: datetime | None = None) -> PreviousContext | None:
+        """Claims of the most recent completed run that has an assessment.
+
+        These are the calibrated claims (after the system's downgrades), shown
+        to the next run as P1, P2 ... so changes can be traced and repeats caught.
+        """
+        query = "SELECT started_at, assessment FROM analysis_runs WHERE status = 'completed' AND assessment IS NOT NULL"
+        params: tuple = ()
+        if before is not None:
+            if before.tzinfo is None:
+                raise ValueError("before must be timezone-aware")
+            query += " AND started_at < ?"
+            params = (before.astimezone(timezone.utc).isoformat(),)
+        with self._connect() as connection:
+            row = connection.execute(query + " ORDER BY started_at DESC LIMIT 1", params).fetchone()
+        if row is None:
+            return None
+        claims = json.loads(row["assessment"]).get("claims", [])
+        if not claims:
+            return None
+        return PreviousContext(
+            claims={
+                f"P{i}": PreviousClaim(f"P{i}", c["text"], c["classification"], tuple(c.get("source_urls", ())))
+                for i, c in enumerate(claims, start=1)
+            },
+            run_started_at=datetime.fromisoformat(row["started_at"]),
+        )
+
     def finish_run(
         self, run_id: str, *, report: str | None = None, warnings: Sequence[str] = (), error: str | None = None
     ) -> None:
@@ -320,6 +362,7 @@ class RunStore:
             report=row["report"],
             report_status=row["report_status"],
             warnings=tuple(json.loads(row["warnings"])),
+            assessment=json.loads(row["assessment"]) if row["assessment"] else None,
             stages=tuple(
                 StageRecord(
                     role=s["role"], position=s["position"], status=s["status"], provider=s["provider"],
