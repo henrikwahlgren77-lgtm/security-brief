@@ -6,13 +6,13 @@
   <header class="page-head">
     <p class="kicker">Designunderlag</p>
     <h1>Tre typografiska riktningar</h1>
-    <p class="standfirst">Samma innehåll i alla tre. Rekommendation: <strong>A</strong>. Motivering och mätningar finns i <code>docs/design-research.md</code>.</p>
+    <p class="standfirst">Samma innehåll i alla tre. <strong>Beslut: riktning A</strong>, vald av redaktionen efter jämförelse. B och C visas som underlag. Motivering och mätningar finns i <code>docs/design-research.md</code>.</p>
   </header>
 
   <div class="type-grid">
     {% for d in directions %}
     <article class="type-card dir-{{ d.id }}" aria-labelledby="dir-{{ d.id }}-name">
-      <p class="meta" id="dir-{{ d.id }}-name"><strong>{{ d.id | upper }}</strong> · {{ d.name }}{% if d.recommended %} · rekommenderad{% endif %}</p>
+      <p class="meta" id="dir-{{ d.id }}-name"><strong>{{ d.id | upper }}</strong> · {{ d.name }}{% if d.recommended %} · vald{% endif %}</p>
       <p class="d-mast">Northern Europe Security Brief</p>
       <h2 class="d-title">Säkerhetsläget i norra Europa förändras</h2>
       <p class="d-sub">Dagens bedömning och vad som förändrats sedan igår</p>

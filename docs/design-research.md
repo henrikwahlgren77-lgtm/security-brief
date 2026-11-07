@@ -61,7 +61,9 @@ Findings:
 - **B. Nordic and functional.** IBM Plex Sans throughout, Plex Mono for metadata. (This is also your Alternative 3. Alternative 1, Switzer, is not shown: no verified file to ship.)
 - **C. International security publication.** Newsreader for headline and body, Plex Sans for labels and navigation, Plex Mono for metadata.
 
-## Recommendation: A
+## Decision: A (chosen by the editor after viewing all three)
+
+Recommended in the analysis below and then chosen by the editor after comparing the three directions in the browser (`/design/typografi`). B and C stay in the preview as reference only.
 
 The rule behind it is not taste: **serif is the publication's own voice, sans is the evidence.** The summary, standfirst and editorial analysis are set in Newsreader; verified facts, official assessments, media reports, sources and all interface text are set in IBM Plex Sans; metadata is Plex Mono. A reader can tell, from the type alone, whether they are reading what the publication argues or what it reports. C would blur that line and costs scannability; B is safe but has no editorial identity.
 

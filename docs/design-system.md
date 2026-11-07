@@ -27,7 +27,7 @@ Colour never carries a threat assessment alone: every marker comes with words ("
 
 ## Typography
 
-Families: Newsreader (the publication's voice: headline, standfirst, summary, analysis), IBM Plex Sans (evidence and interface: body, labels, lists, sources), IBM Plex Mono (dates and metadata only). ✔ (a test lists the only selectors that may use mono.) See `docs/fonts.md` and `docs/design-research.md`.
+**Decided: direction A** (see `docs/design-research.md`). Families: Newsreader (the publication's voice: headline, standfirst, summary, analysis), IBM Plex Sans (evidence and interface: body, labels, lists, sources), IBM Plex Mono (dates and metadata only). ✔ (a test lists the only selectors that may use mono.) See `docs/fonts.md` and `docs/design-research.md`.
 
 Fluid scale, 360 px → 1280 px, ratio 1.2 → 1.25, body 17 → 19 px (`--step--2` … `--step-5`, all `clamp()`). Smallest text is 12 px. ✔
 
