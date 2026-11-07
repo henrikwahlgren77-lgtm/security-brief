@@ -36,9 +36,15 @@ Successful response:
 - `report_date` is an ISO date.
 - `title` is limited to 200 characters.
 - `markdown` is limited to 200,000 characters.
-- A second submission for the same date updates that day's report.
+- A new submission creates a `draft`.
+- A second submission for the same date updates its content and resets it to `draft`, including when it was already published.
 - HTML is generated and sanitized when rendered; raw HTML from the report is not trusted.
 - Missing or incorrect tokens are rejected.
+- Successful response includes `"status": "draft"`.
+
+## Editorial publishing
+
+Editors authenticate with `APP_ADMIN_USER` and `APP_ADMIN_PASSWORD` at `/admin`. The editorial queue supports explicit publishing through a CSRF-protected POST action. A report is public only after this action. The home page and report routes return published reports only; a draft's public detail URL returns 404.
 
 ## Publisher requirements
 
@@ -47,4 +53,4 @@ Successful response:
 - Do not log the Authorization header.
 - Retry transient network errors with bounded backoff.
 - Treat HTTP 401/503 and validation errors as failures requiring attention.
-- Do not publish until source validation and any required approval are complete.
+- Check citations and source links, distinguish verified facts from official assessments and editorial analysis, describe uncertainty, and review for sensitive operational information and unnecessary personal data before publishing.

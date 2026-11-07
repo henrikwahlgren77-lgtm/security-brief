@@ -41,6 +41,9 @@ h2 { font-size: clamp(25px, 4vw, 38px); letter-spacing: -.045em; margin: 0; }
 .report-list a { padding: 18px 0; display: flex; justify-content: space-between; gap: 20px; text-decoration: none; }
 .report-list a:hover, .text-link:hover, .back-link:hover { color: var(--accent); }
 .report-list time { color: var(--muted); white-space: nowrap; font-size: 13px; }
+.report-list form { padding: 0 0 16px; }
+button { border: 0; border-radius: 3px; padding: 10px 16px; background: var(--ink); color: var(--white); font: inherit; font-weight: 700; cursor: pointer; }
+button:hover { background: var(--accent); }
 .empty { padding: 60px 0; }
 .empty h2 { margin-bottom: 12px; }
 .report-header { padding: 70px 0 38px; border-bottom: 1px solid var(--line); }

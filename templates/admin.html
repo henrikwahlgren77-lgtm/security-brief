@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Redaktion · {{ app_name }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="/">← Till den publika webbplatsen</a>
+  <section class="report-header">
+    <p class="eyebrow">REDAKTION</p>
+    <h1>Rapportgranskning</h1>
+    <p class="muted">Utkast blir offentliga först när en redaktör publicerar dem här.</p>
+  </section>
+  {% if reports %}
+    <ul class="report-list">
+      {% for item in reports %}
+        <li>
+          <span>{{ item.title }} · {{ item.report_date }} · {{ item.status }}</span>
+          {% if item.status == "draft" %}
+            <form method="post" action="/admin/reports/{{ item.report_date }}/publish">
+              <input type="hidden" name="csrf_token" value="{{ tokens[item.report_date] }}">
+              <button type="submit">Publicera</button>
+            </form>
+          {% endif %}
+        </li>
+      {% endfor %}
+    </ul>
+  {% else %}
+    <p class="muted">Inga rapporter har skickats in.</p>
+  {% endif %}
+{% endblock %}

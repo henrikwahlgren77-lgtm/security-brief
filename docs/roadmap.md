@@ -5,8 +5,8 @@
 - FastAPI application and responsive report/archive pages.
 - SQLite persistence in a Docker named volume.
 - Markdown rendering with HTML sanitization.
-- Private-by-default report access using HTTP Basic authentication.
-- Token-protected report ingestion endpoint.
+- Public pages for published reports and an authenticated editorial queue.
+- Draft-by-default report ingestion through a token-protected endpoint.
 - Container runs as a non-root user, read-only root filesystem, and binds only to host loopback.
 
 ## Phase 2 — VPS deployment
@@ -22,8 +22,8 @@
 - Implement a separate scheduled publisher; do not assume the ChatGPT scheduled task can call this VPS endpoint.
 - Use public sources only, with source URLs, timestamps, and explicit separation of fact, agency assessment, media reporting, and analysis.
 - Validate the report structure before publication.
-- Publish idempotently by report date through the ingestion API.
-- Add a manual approval switch before automatic public release.
+- Require explicit human editorial approval before each report is publicly released.
+- Never let ingestion publish automatically.
 
 ## Phase 4 — Gmail delivery
 
@@ -41,4 +41,4 @@
 
 ## Publication decision
 
-The source repository is public. Report visibility remains private by default. Switch `PUBLIC_REPORTS=true` only after deciding that the actual report content, its analysis, and its publication timing should be public.
+The source repository and published reports are public. Each new report is stored as a private draft and requires authenticated editorial review before it appears on the public site. The review must verify source links, separate facts from official assessments and editorial analysis, and screen for sensitive operational details.

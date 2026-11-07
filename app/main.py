@@ -1,10 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import hmac
 import os
 import secrets
 import sqlite3
-from contextlib import contextmanager
+from contextlib import asynccontextmanager, contextmanager
 from datetime import date, datetime, timezone
 from pathlib import Path
 from typing import Iterator
@@ -12,7 +13,7 @@ from typing import Iterator
 import bleach
 import markdown
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, status
+from fastapi import Depends, FastAPI, Form, Header, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from fastapi.staticfiles import StaticFiles
@@ -25,11 +26,16 @@ APP_NAME = os.getenv("APP_NAME", "Northern Europe Security Brief")
 ADMIN_USER = os.getenv("APP_ADMIN_USER", "")
 ADMIN_PASSWORD = os.getenv("APP_ADMIN_PASSWORD", "")
 INGEST_TOKEN = os.getenv("INGEST_TOKEN", "")
-PUBLIC_REPORTS = os.getenv("PUBLIC_REPORTS", "false").lower() == "true"
 DATABASE_PATH = Path(os.getenv("DATABASE_PATH", "./data/security_brief.sqlite3"))
 DATABASE_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-app = FastAPI(title=APP_NAME, docs_url=None, redoc_url=None)
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    init_db()
+    yield
+
+
+app = FastAPI(title=APP_NAME, docs_url=None, redoc_url=None, lifespan=lifespan)
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 basic = HTTPBasic(auto_error=False)
@@ -61,14 +67,19 @@ def init_db() -> None:
                 title TEXT NOT NULL,
                 markdown TEXT NOT NULL,
                 created_at TEXT NOT NULL,
-                updated_at TEXT NOT NULL
+                updated_at TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'draft',
+                published_at TEXT,
+                published_by TEXT
             )
         """)
-
-
-@app.on_event("startup")
-def startup() -> None:
-    init_db()
+        columns = {row["name"] for row in connection.execute("PRAGMA table_info(reports)")}
+        if "status" not in columns:
+            connection.execute("ALTER TABLE reports ADD COLUMN status TEXT NOT NULL DEFAULT 'draft'")
+        if "published_at" not in columns:
+            connection.execute("ALTER TABLE reports ADD COLUMN published_at TEXT")
+        if "published_by" not in columns:
+            connection.execute("ALTER TABLE reports ADD COLUMN published_by TEXT")
 
 
 def require_admin(credentials: HTTPBasicCredentials | None = Depends(basic)) -> str:
@@ -129,24 +140,27 @@ def get_reports() -> list[sqlite3.Row]:
     with db() as connection:
         return connection.execute(
             "SELECT report_date, title, created_at, updated_at "
-            "FROM reports ORDER BY report_date DESC"
+            "FROM reports WHERE status = 'published' ORDER BY report_date DESC"
         ).fetchall()
 
 
 def get_report(report_date: str) -> sqlite3.Row | None:
     with db() as connection:
         return connection.execute(
-            "SELECT * FROM reports WHERE report_date = ?", (report_date,)
+            "SELECT * FROM reports WHERE report_date = ? AND status = 'published'", (report_date,)
         ).fetchone()
 
 
-def archive_access(user: str | None) -> None:
-    if not PUBLIC_REPORTS and user is None:
-        raise HTTPException(
-            status_code=401,
-            headers={"WWW-Authenticate": "Basic"},
-            detail="Authentication required",
-        )
+def get_editorial_reports() -> list[sqlite3.Row]:
+    with db() as connection:
+        return connection.execute(
+            "SELECT report_date, title, status, created_at, updated_at "
+            "FROM reports ORDER BY report_date DESC"
+        ).fetchall()
+
+
+def publish_token(report_date: str) -> str:
+    return hmac.new(ADMIN_PASSWORD.encode(), f"publish:{report_date}".encode(), hashlib.sha256).hexdigest()
 
 
 @app.middleware("http")
@@ -169,8 +183,7 @@ def health():
 
 
 @app.get("/", response_class=HTMLResponse)
-def home(request: Request, user: str | None = Depends(require_admin_optional)):
-    archive_access(user)
+def home(request: Request):
     reports = get_reports()
     latest = get_report(reports[0]["report_date"]) if reports else None
     return templates.TemplateResponse(
@@ -185,23 +198,11 @@ def home(request: Request, user: str | None = Depends(require_admin_optional)):
     )
 
 
-def require_admin_optional(
-    credentials: HTTPBasicCredentials | None = Depends(basic),
-) -> str | None:
-    if PUBLIC_REPORTS and credentials is None:
-        return None
-    if credentials is None:
-        return None
-    return require_admin(credentials)
-
-
 @app.get("/reports/{report_date}", response_class=HTMLResponse)
 def report_page(
     request: Request,
     report_date: str,
-    user: str | None = Depends(require_admin_optional),
 ):
-    archive_access(user)
     try:
         date.fromisoformat(report_date)
     except ValueError:
@@ -226,18 +227,52 @@ def upsert_report(payload: ReportIn):
     with db() as connection:
         connection.execute(
             """
-            INSERT INTO reports (report_date, title, markdown, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?)
+            INSERT INTO reports (report_date, title, markdown, created_at, updated_at, status, published_at, published_by)
+            VALUES (?, ?, ?, ?, ?, 'draft', NULL, NULL)
             ON CONFLICT(report_date) DO UPDATE SET
                 title=excluded.title,
                 markdown=excluded.markdown,
-                updated_at=excluded.updated_at
+                updated_at=excluded.updated_at,
+                status='draft',
+                published_at=NULL,
+                published_by=NULL
             """,
             (payload.report_date.isoformat(), payload.title, payload.markdown, now, now),
         )
-    return {"ok": True, "report_date": payload.report_date.isoformat()}
+    return {"ok": True, "report_date": payload.report_date.isoformat(), "status": "draft"}
 
 
 @app.get("/admin")
-def admin(user: str = Depends(require_admin)):
-    return RedirectResponse(url="/", status_code=303)
+def admin(request: Request, user: str = Depends(require_admin)):
+    reports = get_editorial_reports()
+    return templates.TemplateResponse(
+        request=request,
+        name="admin.html",
+        context={"app_name": APP_NAME, "reports": reports, "tokens": {
+            row["report_date"]: publish_token(row["report_date"]) for row in reports
+        }},
+    )
+
+
+@app.post("/admin/reports/{report_date}/publish")
+def publish_report(
+    report_date: str,
+    csrf_token: str = Form(),
+    user: str = Depends(require_admin),
+):
+    try:
+        date.fromisoformat(report_date)
+    except ValueError:
+        raise HTTPException(status_code=404, detail="Report not found")
+    if not hmac.compare_digest(csrf_token, publish_token(report_date)):
+        raise HTTPException(status_code=403, detail="Invalid publishing token")
+    now = datetime.now(timezone.utc).isoformat()
+    with db() as connection:
+        result = connection.execute(
+            "UPDATE reports SET status='published', published_at=?, published_by=?, updated_at=? "
+            "WHERE report_date=? AND status='draft'",
+            (now, user, now, report_date),
+        )
+    if result.rowcount == 0:
+        raise HTTPException(status_code=404, detail="Draft report not found")
+    return RedirectResponse(url="/admin", status_code=303)

@@ -6,9 +6,9 @@ A small, self-hosted publication service for the Northern Europe daily security 
 
 - Public source code; secrets and operational data stay on the VPS.
 - Public-source intelligence only. No classified or access-controlled material.
-- Reports are private by default. Set `PUBLIC_REPORTS=true` only when public publication is intentional.
+- The site is public, but every incoming report is a private draft until an authenticated editor publishes it.
 - No public registration, comments, uploads, or arbitrary HTML.
-- Reports are submitted through a token-protected ingestion API.
+- Reports are submitted through a token-protected ingestion API and rendered with sanitized Markdown.
 
 ## Stack
 
@@ -29,7 +29,7 @@ cp .env.example .env
 uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. The report archive is private unless `PUBLIC_REPORTS=true`.
+Open http://127.0.0.1:8000 for the public site and http://127.0.0.1:8000/admin for the editorial queue. Configure a unique `APP_ADMIN_USER`, `APP_ADMIN_PASSWORD`, and `INGEST_TOKEN` before starting. Reports remain drafts until an authenticated editor publishes them.
 
 ## VPS deployment (after server inventory and DNS)
 
@@ -54,7 +54,7 @@ curl -X POST http://127.0.0.1:8098/api/reports \
   -d '{"report_date":"2026-11-08","title":"Säkerhetsbrief – 8 november 2026","markdown":"## Sammanfattning\n\nRapporttext..."}'
 ```
 
-Keep the ingestion token private. The endpoint is intended for a trusted publisher, not a browser.
+Keep the ingestion token private. The endpoint is intended for a trusted publisher, not a browser. Ingestion never publishes a report; every submission and update sets its status to `draft`. An editor signs in at `/admin` and publishes only after checking source links, separating verifiable facts from official assessments and editorial analysis, and reviewing the report for sensitive operational detail.
 
 ## Configuration and data
 
@@ -62,4 +62,4 @@ See `.env.example`. Do not commit `.env`, database files, credentials, API token
 
 ## Current scope
 
-The initial application foundation includes report storage, archive, sanitized Markdown rendering, access control, security headers, and a token-protected ingestion API. Automated research, Gmail delivery, the scheduled publisher, deployment, backups, and DNS are separate integration steps and are not active yet.
+The application includes a public archive of published reports, sanitized Markdown rendering, security headers, token-protected draft ingestion, and authenticated editorial publishing. Automated research, Gmail delivery, the scheduled publisher, deployment, backups, and DNS are separate integration steps and are not active yet.
