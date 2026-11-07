@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>{% block title %}{{ app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/site.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="wordmark" href="/">SECURITY <span>BRIEF</span></a>
+    <span class="header-note">NORRA EUROPA · ÖPPNA KÄLLOR</span>
+  </header>
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+  <footer class="site-footer">
+    <span>Analys baserad på offentligt tillgänglig information.</span>
+    <span>Fakta, myndighetsbedömningar och egen analys ska hållas isär.</span>
+  </footer>
+</body>
+</html>
