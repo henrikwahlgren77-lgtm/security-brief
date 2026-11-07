@@ -11,6 +11,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY prompts ./prompts
+COPY config ./config
 COPY templates ./templates
 COPY static ./static
 

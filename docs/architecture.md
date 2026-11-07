@@ -123,3 +123,26 @@ The calibrated claim list, not the model's own labels, is what the reviewer and 
 Issues are returned in `AnalysisDraft.warnings` for the editor; `info` items (for example "no earlier report", "no source states a date") stay in the run log only.
 
 Limits: the rules check structure, support and consistency, not truth. They cannot tell whether a primary source is itself wrong or misleading, and the text-similarity repeat check is a heuristic. The editor still has to read the draft.
+
+## Analysis job and editorial review
+
+`python -m app.analysis.job` (Compose service `analysis`, profile `analysis`, started only on demand) fetches the given URLs from approved hosts, runs the pipeline and submits ONE draft through `POST /api/reports`, the same trusted path as any publisher. It never writes to the `reports` table and never publishes.
+
+Hard checks before anything is submitted (any failure stops the job; the run stays in the run log):
+
+- roles configured with the mock provider are refused (placeholder text must never become a draft);
+- every `[S#]` citation must map to a source that was actually fetched, and is replaced by a link to its URL;
+- no other URL may appear in the report (`find_unfetched_urls`);
+- all eight required sections must be present, in order; the title is fixed by the job, not by a model;
+- the API must confirm the report was stored as a `draft`. The token is sent only over https, or http to this deployment (`localhost`, `127.0.0.1`, `security-brief`).
+
+Review in `/admin`: a draft with an `analysis_run_id` is not published straight from the queue. `/admin/reports/{date}/review` (editor login) shows warnings, unresolved objections (marked when the system had to add them), calibrated claims with downgrades, alternative interpretations, the system's notes, the sources with tier, dates and links, and the model steps with tokens and cost. All model and source text is HTML-escaped; links come only from stored http(s) URLs. The publish form requires a checkbox, and the server rejects publishing without it (`ack_review=yes`) in addition to the existing CSRF token and login. Reports without a run link behave as before.
+
+Trust boundaries:
+
+- The web app and the job share one SQLite file on the `brief_data` volume. The web app only reads analysis tables, through a read-only connection (`app.analysis.review`) that cannot create or change them. The job writes analysis tables and sources directly, and reports only through the API.
+- Model API keys live only in `.env.analysis`, read by the job container. The web container never receives them. `INGEST_TOKEN` is in both files and must match.
+- The run log and `sources` table contain full source text and model output. Anyone with the editor login can see the extracts the review page shows; keep the volume private.
+- Two containers write the same SQLite file on one host; short transactions and SQLite's file locking handle this. Do not run several analysis jobs at once.
+
+Not built: source discovery (the operator supplies URLs), scheduling, and any automatic publishing.

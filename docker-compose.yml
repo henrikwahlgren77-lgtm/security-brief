@@ -19,5 +19,30 @@ services:
     tmpfs:
       - /tmp
 
+  # Daily analysis job. Not started by `docker compose up`; run it on demand:
+  #   docker compose run --rm analysis --date 2026-11-08 --urls-file /input/urls.txt
+  # It holds the model API keys (in .env.analysis); the web service never sees them.
+  analysis:
+    build: .
+    profiles: ["analysis"]
+    entrypoint: ["python", "-m", "app.analysis.job"]
+    env_file:
+      - .env.analysis
+    environment:
+      DATABASE_PATH: /data/security_brief.sqlite3
+      BRIEF_API_URL: http://security-brief:8000
+    volumes:
+      - brief_data:/data
+      - ./analysis-input:/input:ro
+    depends_on:
+      - security-brief
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
 volumes:
   brief_data:

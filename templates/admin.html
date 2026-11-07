@@ -12,7 +12,9 @@
       {% for item in reports %}
         <li>
           <span>{{ item.title }} · {{ item.report_date }} · {{ item.status }}</span>
-          {% if item.status == "draft" %}
+          {% if item.analysis_run_id %}
+            <a class="text-link" href="/admin/reports/{{ item.report_date }}/review">Granska underlag{% if item.status == "draft" %} och publicera{% endif %}</a>
+          {% elif item.status == "draft" %}
             <form method="post" action="/admin/reports/{{ item.report_date }}/publish">
               <input type="hidden" name="csrf_token" value="{{ tokens[item.report_date] }}">
               <button type="submit">Publicera</button>
