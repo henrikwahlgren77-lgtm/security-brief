@@ -93,3 +93,16 @@ The ChatGPT scheduled brief does not automatically call this API or send Gmail b
 - Tokens and latency are returned per call. Cost is computed only from prices the operator configures; no vendor prices are built into the code.
 - A counter-analysis on the same provider and model as the main analysis produces a warning on the draft.
 - Why not the vendor SDKs or a gateway library: see `docs/provider-review.md`.
+
+## Run log
+
+`app.analysis.runs.RunStore` records every analysis run in two tables of the same SQLite database: `analysis_runs` (status, timing, configuration snapshot, which stored sources were used, source-material hash, the draft report, warnings) and `analysis_stages` (per stage: provider, requested and served model, prompt version and SHA-256, the exact input and output text, tokens, estimated cost, latency, attempts, finish reason, error). Pass `run_store=RunStore(path)` to `AnalysisPipeline` to enable it.
+
+- Stages are written as they finish, so a run that fails halfway still shows exactly how far it got and why. The failing stage stores the input it was given.
+- With the stored inputs, the source records they refer to (`sources.id`) and the prompt files (checked by SHA-256), a draft can be traced back and its stages re-run.
+- A run can only hold a `draft` report. Finishing a run is one-way.
+- Credentials are never stored: the configuration snapshot has provider, model, token limit, prompt version and operator-supplied prices only. Error text recorded for unexpected exceptions is reduced to the exception type; adapter errors are already free of request content.
+- Cost is a sum over stages whose prices are configured. `RunRecord.cost_complete` says whether every stage had one; otherwise `known_cost` is a lower bound.
+- Log lines (logger `app.analysis.runs`) carry run id, role, provider, model, prompt version, tokens, latency, attempts and errors, never source text or model output.
+- `python -m app.analysis.runs list|show <id>|usage` prints metadata only.
+- Stored text is as sensitive as the sources. Keep the database on the analysis host and back it up with the rest of the data (backups are not set up yet).

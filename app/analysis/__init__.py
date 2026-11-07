@@ -16,6 +16,7 @@ from .sources import (
     independent_origins,
 )
 from .prompts import Prompt, PromptError, PromptLibrary
+from .runs import RunRecord, RunStore, StageRecord
 from .providers import (
     AnalysisConfig,
     AnalysisRole,
@@ -28,6 +29,9 @@ from .providers import (
 )
 
 __all__ = [
+    "RunRecord",
+    "RunStore",
+    "StageRecord",
     "AnthropicAdapter",
     "MistralAdapter",
     "OpenAIAdapter",

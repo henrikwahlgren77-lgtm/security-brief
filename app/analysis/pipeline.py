@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from enum import StrEnum
+from typing import Mapping
 
-from .prompts import PromptLibrary
+from .prompts import PromptError, PromptLibrary
 from .providers import (
     AnalysisConfig,
     AnalysisRole,
@@ -15,6 +17,8 @@ from .providers import (
     ProviderResponse,
     estimate_cost,
 )
+from .runs import RunStore
+from .sources import SourceRecord
 
 
 class EditorialStatus(StrEnum):
@@ -40,6 +44,7 @@ class AnalysisDraft:
     final_report: StageResult
     status: EditorialStatus = EditorialStatus.DRAFT
     warnings: tuple[str, ...] = ()
+    run_id: str | None = None  # set when the pipeline has a run log
 
     @property
     def stages(self) -> tuple[StageResult, ...]:
@@ -54,14 +59,39 @@ class PublicationApproval:
 
 
 class AnalysisPipeline:
-    def __init__(self, config: AnalysisConfig, providers: ProviderRegistry, prompts: PromptLibrary | None = None):
+    def __init__(
+        self,
+        config: AnalysisConfig,
+        providers: ProviderRegistry,
+        prompts: PromptLibrary | None = None,
+        run_store: RunStore | None = None,
+    ):
         self.config = config
         self.providers = providers
         self.prompts = prompts or PromptLibrary()
+        self.run_store = run_store
 
-    def _run(self, role: AnalysisRole, context: str) -> StageResult:
-        provider, role_config = self.providers.for_role(self.config, role)
-        prompt = self.prompts.load(role, role_config.prompt_version)
+    def _run(self, role: AnalysisRole, context: str, run_id: str | None, position: int) -> StageResult:
+        started = datetime.now(timezone.utc)
+        configured = self.config.for_role(role)
+        prompt = None
+
+        def fail(message: str) -> None:
+            if self.run_store and run_id:
+                self.run_store.record_stage(
+                    run_id, position=position, role=role.value, provider=configured.provider,
+                    requested_model=configured.model,
+                    prompt_version=prompt.version if prompt else configured.prompt_version,
+                    prompt_sha256=prompt.sha256 if prompt else None,
+                    input_text=context, started_at=started, error=message,
+                )
+
+        try:
+            provider, role_config = self.providers.for_role(self.config, role)
+            prompt = self.prompts.load(role, role_config.prompt_version)
+        except (ProviderError, PromptError) as exc:
+            fail(str(exc))
+            raise
         request = ProviderRequest(
             role=role,
             prompt=prompt.text,
@@ -71,42 +101,76 @@ class AnalysisPipeline:
         )
         try:
             response = provider.complete(request)
-        except ProviderError:
+        except ProviderError as exc:
+            fail(str(exc))
             raise
         except Exception as exc:
             # Avoid leaking vendor exception text that may contain request data or credentials.
+            fail(f"Provider failed during role '{role.value}' ({type(exc).__name__}).")
             raise ProviderError(f"Provider failed during role '{role.value}'.") from exc
         if not isinstance(response, ProviderResponse) or not response.text.strip():
+            fail("Provider returned an empty or invalid response.")
             raise ProviderError(f"Provider returned an empty or invalid response for role '{role.value}'.")
+        cost = estimate_cost(response, role_config)
+        if self.run_store and run_id:
+            self.run_store.record_stage(
+                run_id, position=position, role=role.value, provider=configured.provider,
+                requested_model=role_config.model, prompt_version=prompt.version, prompt_sha256=prompt.sha256,
+                input_text=context, started_at=started, response=response, estimated_cost=cost,
+            )
         return StageResult(
             role=role,
             response=response,
             prompt_version=prompt.version,
             prompt_sha256=prompt.sha256,
-            estimated_cost=estimate_cost(response, role_config),
+            estimated_cost=cost,
         )
 
-    def analyze(self, source_material: str) -> AnalysisDraft:
+    def analyze(
+        self, source_material: str, *, source_map: Mapping[str, SourceRecord] | None = None
+    ) -> AnalysisDraft:
+        """Run all four stages.
+
+        ``source_map`` (id -> stored record, as returned by ``format_sources_for_prompt``) is
+        recorded in the run log so the exact sources behind a draft can be recovered.
+        """
         if not source_material.strip():
             raise ValueError("Source material must not be empty")
 
-        collection = self._run(AnalysisRole.COLLECTION, source_material)
-        main = self._run(AnalysisRole.MAIN_ANALYSIS, collection.response.text)
-        counter = self._run(
-            AnalysisRole.COUNTER_ANALYSIS,
-            f"Source material:\n{collection.response.text}\n\nMain analysis to review:\n{main.response.text}",
-        )
-        final = self._run(
-            AnalysisRole.FINAL_REPORT,
-            f"Main analysis:\n{main.response.text}\n\nIndependent counter-analysis:\n{counter.response.text}",
-        )
+        run_id = None
+        if self.run_store:
+            ids = {sid: rec.id for sid, rec in (source_map or {}).items() if rec.id is not None}
+            run_id = self.run_store.start_run(self.config, source_material, ids)
+        try:
+            collection = self._run(AnalysisRole.COLLECTION, source_material, run_id, 1)
+            main = self._run(AnalysisRole.MAIN_ANALYSIS, collection.response.text, run_id, 2)
+            counter = self._run(
+                AnalysisRole.COUNTER_ANALYSIS,
+                f"Source material:\n{collection.response.text}\n\nMain analysis to review:\n{main.response.text}",
+                run_id, 3,
+            )
+            final = self._run(
+                AnalysisRole.FINAL_REPORT,
+                f"Main analysis:\n{main.response.text}\n\nIndependent counter-analysis:\n{counter.response.text}",
+                run_id, 4,
+            )
+        except Exception as exc:
+            if self.run_store and run_id:
+                # ProviderError/PromptError text is already free of request data; anything else is reduced to its type.
+                safe = str(exc) if isinstance(exc, (ProviderError, PromptError)) else f"Unexpected {type(exc).__name__}"
+                self.run_store.finish_run(run_id, error=safe)
+            raise
+        warnings = self._independence_warnings(main, counter)
+        if self.run_store and run_id:
+            self.run_store.finish_run(run_id, report=final.response.text, warnings=warnings)
         return AnalysisDraft(
             report=final.response.text,
             collection=collection,
             main_analysis=main,
             counter_analysis=counter,
             final_report=final,
-            warnings=self._independence_warnings(main, counter),
+            warnings=warnings,
+            run_id=run_id,
         )
 
     @staticmethod
