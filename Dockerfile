@@ -14,8 +14,8 @@ COPY app ./app
 COPY templates ./templates
 COPY static ./static
 
-RUN mkdir -p /srv/security-brief/data && chown -R app:app /srv/security-brief
+RUN mkdir -p /data && chown -R app:app /data /srv/security-brief
 USER app
 
 EXPOSE 8000
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--proxy-headers"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
