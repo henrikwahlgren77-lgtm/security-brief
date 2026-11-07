@@ -1,6 +1,7 @@
 .env
 .env.*
 !.env.example
+!.env.analysis.example
 .venv/
 __pycache__/
 *.py[cod]
@@ -11,3 +12,4 @@ data/
 *.sqlite3
 *.db
 .DS_Store
+analysis-input/

@@ -1,0 +1,30 @@
+/* Typography comparison only (design preview). Three directions with identical content. */
+.type-card p { margin: 0; }
+.type-card .d-mast { font-size: var(--step--1); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: var(--space-xs); }
+.type-card .d-title { font-size: var(--step-3); line-height: 1.08; margin-bottom: var(--space-2xs); }
+.type-card .d-sub { font-size: var(--step-0); margin-bottom: var(--space-s); color: var(--muted); }
+.type-card .d-lede { font-size: var(--step-1); line-height: 1.4; margin-bottom: var(--space-s); }
+.type-card .d-meta { font-family: var(--font-mono); font-size: var(--step--1); color: var(--muted); }
+.type-card .d-section { font-size: var(--step-0); margin: var(--space-m) 0 var(--space-2xs); }
+.type-card .d-body { margin-bottom: var(--space-s); line-height: 1.6; max-width: 36rem; }
+.type-card .d-source { border-left: 3px solid var(--blue); padding-left: var(--space-xs); font-size: var(--step--1); }
+.type-card .d-tags { margin-top: var(--space-s); display: flex; flex-wrap: wrap; gap: var(--space-2xs); }
+.type-card .d-fonts { margin-top: var(--space-m); }
+.spec-title { margin-top: var(--space-2xl); font-size: var(--step-1); }
+/* A: Newsreader for headline, standfirst and analysis; IBM Plex Sans for body; Plex Mono for metadata. */
+.dir-a .d-title, .dir-a .d-lede { font-family: var(--font-serif); font-weight: 500; }
+.dir-a .d-lede { font-weight: 400; }
+.dir-a .d-section { font-family: var(--font-sans); font-weight: 600; }
+.dir-a .d-body, .dir-a .d-source, .dir-a .d-mast, .dir-a .d-sub { font-family: var(--font-sans); }
+/* B: IBM Plex Sans throughout, Plex Mono for metadata. */
+.dir-b { font-family: var(--font-sans); }
+.dir-b .d-title { font-family: var(--font-sans); font-weight: 500; letter-spacing: -0.02em; font-size: var(--step-2); }
+.dir-b .d-lede, .dir-b .d-sub, .dir-b .d-body, .dir-b .d-source, .dir-b .d-mast { font-family: var(--font-sans); }
+.dir-b .d-lede { font-size: var(--step-0); }
+.dir-b .d-section { font-weight: 600; }
+/* C: Newsreader for headline AND body, Plex Sans only for labels and navigation. */
+.dir-c .d-title { font-family: var(--font-serif); font-weight: 500; }
+.dir-c .d-lede, .dir-c .d-sub, .dir-c .d-body, .dir-c .d-source { font-family: var(--font-serif); font-size: calc(var(--step-0) * 1.08); }
+.dir-c .d-lede { font-size: var(--step-1); }
+.dir-c .d-section { font-family: var(--font-serif); font-weight: 500; font-size: var(--step-1); }
+.dir-c .d-mast { font-family: var(--font-sans); font-weight: 600; }

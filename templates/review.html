@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Granska · {{ report.report_date }} · {{ app_name }}{% endblock %}
+{% block content %}
+  <a class="back-link" href="/admin">← Till redaktionen</a>
+  <section class="report-header">
+    <p class="eyebrow">GRANSKA UNDERLAG · {{ report.status | upper }}</p>
+    <h1>{{ report.title }}</h1>
+    <p class="muted">{{ report.report_date }}. Utkastet är skrivet med stöd av AI-modeller. Ingenting här är verifierat av en människa förrän du har läst det.</p>
+  </section>
+
+  {% if not linked %}
+    <p class="notice">Det här utkastet har inget analysunderlag (det skickades in utan koppling till en analyskörning).</p>
+  {% elif review is none %}
+    <p class="notice warn">Analysunderlaget för den här rapporten kunde inte läsas. Granska rapporten och källorna på annat sätt innan du publicerar.</p>
+  {% else %}
+    {% set run = review.run %}
+    <section class="review-section">
+      <h2>Körning</h2>
+      <p class="muted">
+        Status <strong>{{ run.status }}</strong> · startad {{ run.started_at.isoformat() }}
+        {% if run.duration_seconds is not none %}· {{ "%.0f"|format(run.duration_seconds) }} s{% endif %}
+        · tokens in/ut {{ run.input_tokens if run.input_tokens is not none else "okänt" }}/{{ run.output_tokens if run.output_tokens is not none else "okänt" }}
+        · kostnad {{ "%.4f"|format(run.known_cost) }}{% if not run.cost_complete %} (nedre gräns, priser saknas för vissa steg){% endif %}
+      </p>
+      {% if run.error %}<p class="notice warn">Fel: {{ run.error }}</p>{% endif %}
+    </section>
+
+    <section class="review-section">
+      <h2>Varningar</h2>
+      {% if run.warnings %}
+        <ul>{% for warning in run.warnings %}<li>{{ warning }}</li>{% endfor %}</ul>
+      {% else %}
+        <p class="muted">Inga varningar från systemets kontroller. Det betyder inte att innehållet är rätt.</p>
+      {% endif %}
+    </section>
+
+    <section class="review-section">
+      <h2>Olösta invändningar från den oberoende granskningen</h2>
+      {% if review.unresolved_objections %}
+        <p class="muted">Bara du kan avfärda dem. De ska finnas under ”Osäkerheter och luckor” i rapporten.</p>
+        <table class="data">
+          <thead><tr><th>Id</th><th>Allvar</th><th>Avser</th><th>Typ</th><th>Invändning</th></tr></thead>
+          <tbody>
+          {% for o in review.unresolved_objections %}
+            <tr>
+              <td>{{ o.id }}{% if o.id in review.added_objections %} <span class="badge warn">tillagd av systemet</span>{% endif %}</td>
+              <td>{{ o.severity | term }}</td><td>{{ o.target }}</td><td>{{ o.type | term }}</td><td>{{ o.text }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">Granskningen lämnade inga avgörande eller väsentliga invändningar.</p>
+      {% endif %}
+    </section>
+  {% endif %}
+
+  <section class="review-section">
+    <h2>Rapportutkast</h2>
+    <div class="prose">{{ report_html | safe }}</div>
+  </section>
+
+  {% if linked and review is not none %}
+    <section class="review-section">
+      <h2>Påståenden och klassificering</h2>
+      <p class="muted">Klassificeringen är systemets kontrollerade, inte modellens egen. ”Nedgraderad” betyder att källstödet inte räckte för modellens ursprungliga bedömning.</p>
+      {% if review.claims %}
+        <table class="data">
+          <thead><tr><th>Id</th><th>Påstående</th><th>Typ</th><th>Klass</th><th>Förändring</th><th>Källor</th></tr></thead>
+          <tbody>
+          {% for c in review.claims %}
+            <tr>
+              <td>{{ c.id }}</td>
+              <td>{{ c.text }}{% if c.attributed_to %} <span class="muted">({{ c.attributed_to }})</span>{% endif %}</td>
+              <td>{{ c.kind | term }}</td>
+              <td>{{ c.classification | term }}{% if c.downgraded_from %} <span class="badge warn">nedgraderad från {{ c.downgraded_from | term | lower }}</span>{% endif %}</td>
+              <td>{{ c.change | term }}{% if c.changed_from %} <span class="badge">rättad från {{ c.changed_from | term | lower }}</span>{% endif %}</td>
+              <td>{{ c.sources | join(", ") }}</td>
+            </tr>
+          {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <p class="muted">Inga påståenden registrerades.</p>
+      {% endif %}
+      {% if review.assessment.article5 %}
+        <p><strong>Artikel 5-kategori:</strong> {{ review.assessment.article5.category | term }} – {{ review.assessment.article5.reasoning }}</p>
+      {% endif %}
+    </section>
+
+    {% if review.assessment.hypotheses %}
+    <section class="review-section">
+      <h2>Alternativa tolkningar</h2>
+      {% for h in review.assessment.hypotheses %}
+        <h3>{{ h.event }}</h3>
+        <ol>
+          {% for e in h.explanations %}
+            <li{% if loop.index0 == h.strongest %} class="strongest"{% endif %}>
+              {{ e.text }}{% if loop.index0 == h.strongest %} <span class="badge">starkast stöd enligt modellen</span>{% endif %}
+              {% if e.supports %}<br><span class="muted">Talar för: {{ e.supports | join("; ") }}</span>{% endif %}
+              {% if e.against %}<br><span class="muted">Talar emot: {{ e.against | join("; ") }}</span>{% endif %}
+              {% if e.missing %}<br><span class="muted">Saknas: {{ e.missing | join("; ") }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ol>
+      {% endfor %}
+    </section>
+    {% endif %}
+
+    <section class="review-section">
+      <h2>Systemets noteringar</h2>
+      {% if review.issues %}
+        <ul>
+          {% for i in review.issues %}
+            <li><span class="badge{% if i.level == 'warn' %} warn{% endif %}">{{ i.level }}</span> {{ i.code }}{% if i.subject %} {{ i.subject }}{% endif %}: {{ i.message }}</li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <p class="muted">Inga noteringar.</p>
+      {% endif %}
+    </section>
+
+    <section class="review-section">
+      <h2>Källor som användes</h2>
+      <table class="data">
+        <thead><tr><th>Id</th><th>Källa</th><th>Nivå</th><th>Publicerad</th><th>Hämtad</th></tr></thead>
+        <tbody>
+        {% for s in review.sources %}
+          <tr>
+            <td>{{ s.id }}</td>
+            <td>{{ s.name }}{% if s.title %} – {{ s.title }}{% endif %}<br>
+              {% if s.url %}<a href="{{ s.url }}" rel="noopener noreferrer nofollow">{{ s.url }}</a>{% endif %}</td>
+            <td>{{ s.tier if s.tier is not none else "–" }}</td>
+            <td>{{ s.published_at or "uppgift saknas" }}</td>
+            <td>{{ s.fetched_at }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+
+    <section class="review-section">
+      <h2>Modellsteg</h2>
+      <table class="data">
+        <thead><tr><th>#</th><th>Roll</th><th>Status</th><th>Leverantör / modell</th><th>Prompt</th><th>Tokens in/ut</th><th>ms</th><th>Försök</th></tr></thead>
+        <tbody>
+        {% for s in review.run.stages %}
+          <tr>
+            <td>{{ s.position }}</td><td>{{ s.role }}</td><td>{{ s.status }}{% if s.error %}: {{ s.error }}{% endif %}</td>
+            <td>{{ s.provider }} / {{ s.served_model or s.requested_model or "–" }}</td>
+            <td>{{ s.prompt_version or "–" }}</td>
+            <td>{{ s.input_tokens if s.input_tokens is not none else "–" }} / {{ s.output_tokens if s.output_tokens is not none else "–" }}</td>
+            <td>{{ s.latency_ms if s.latency_ms is not none else "–" }}</td><td>{{ s.attempts if s.attempts is not none else "–" }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </section>
+  {% endif %}
+
+  {% if report.status == "draft" %}
+    <section class="review-section">
+      <h2>Publicera</h2>
+      <form method="post" action="/admin/reports/{{ report.report_date }}/publish">
+        <input type="hidden" name="csrf_token" value="{{ token }}">
+        {% if linked %}
+          <label class="check">
+            <input type="checkbox" name="ack_review" value="yes" required>
+            Jag har läst varningarna och de olösta invändningarna, kontrollerat källorna och bedömt att rapporten inte innehåller känsliga operativa detaljer.
+          </label>
+        {% endif %}
+        <button type="submit">Publicera</button>
+      </form>
+    </section>
+  {% else %}
+    <p class="muted">Rapporten är publicerad ({{ report.published_at }}, {{ report.published_by }}).</p>
+  {% endif %}
+{% endblock %}

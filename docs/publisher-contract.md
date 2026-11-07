@@ -18,7 +18,8 @@ Example body:
 {
   "report_date": "2026-11-08",
   "title": "Säkerhetsbrief – 8 november 2026",
-  "markdown": "## Sammanfattning\n\nRapporttext med källhänvisningar."
+  "markdown": "## Sammanfattning\n\nRapporttext med källhänvisningar.",
+  "analysis_run_id": "0123456789abcdef0123456789abcdef"
 }
 ```
 
@@ -37,6 +38,7 @@ Successful response:
 - `report_date` is an ISO date.
 - `title` is limited to 200 characters.
 - `markdown` is limited to 200,000 characters.
+- `analysis_run_id` is optional: 32 lowercase hex characters naming a run in the analysis run log (set by the analysis job). It links the draft to its review material at `/admin/reports/{date}/review`. Submitting a date again without it clears the link, because the text no longer matches that analysis. A draft with a link can only be published after the editor confirms on the review page that the review material was read.
 - A new submission creates a `draft`.
 - A second submission for the same date updates its content and resets it to `draft`, including when it was already published.
 - HTML is generated and sanitized when rendered; raw HTML from the report is not trusted.

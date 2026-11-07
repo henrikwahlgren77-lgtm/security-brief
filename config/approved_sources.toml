@@ -1,0 +1,169 @@
+# Approved sources for automated collection.
+#
+# The fetcher refuses every URL whose host is not listed here (a host matches
+# when it equals a listed domain or is a subdomain of it). Redirects are
+# checked against this list too.
+#
+# This is an INITIAL PROPOSAL for editorial review. Domains have not been
+# verified for reachability or suitability from this repository. Add, remove
+# or re-tier entries as the editor sees fit; do not add domains that serve
+# user-generated content.
+#
+# tier 1 = government, intelligence/security service, armed forces, official documents
+# tier 2 = NATO, EU and other international organisations
+# Media and specialist publications (tiers 3-4) are intentionally NOT listed yet;
+# the editor decides which outlets to approve.
+
+[[source]]
+name = "Säkerhetspolisen (Säpo)"
+country = "SE"
+region = "Norden"
+tier = 1
+domains = ["sakerhetspolisen.se"]
+
+[[source]]
+name = "Försvarsmakten (inkl. MUST)"
+country = "SE"
+region = "Norden"
+tier = 1
+domains = ["forsvarsmakten.se"]
+
+[[source]]
+name = "Försvarets radioanstalt (FRA)"
+country = "SE"
+region = "Norden"
+tier = 1
+domains = ["fra.se"]
+
+[[source]]
+name = "Myndigheten för samhällsskydd och beredskap (MSB)"
+country = "SE"
+region = "Norden"
+tier = 1
+domains = ["msb.se"]
+
+[[source]]
+name = "CERT-SE"
+country = "SE"
+region = "Norden"
+tier = 1
+domains = ["cert.se"]
+
+[[source]]
+name = "Regeringen (Sverige)"
+country = "SE"
+region = "Norden"
+tier = 1
+domains = ["regeringen.se"]
+
+[[source]]
+name = "Politiets sikkerhetstjeneste (PST)"
+country = "NO"
+region = "Norden"
+tier = 1
+domains = ["pst.no"]
+
+[[source]]
+name = "Forsvaret (Norge)"
+country = "NO"
+region = "Norden"
+tier = 1
+domains = ["forsvaret.no"]
+
+[[source]]
+name = "Etterretningstjenesten"
+country = "NO"
+region = "Norden"
+tier = 1
+domains = ["etterretningstjenesten.no"]
+
+[[source]]
+name = "Politiets Efterretningstjeneste (PET)"
+country = "DK"
+region = "Norden"
+tier = 1
+domains = ["pet.dk"]
+
+[[source]]
+name = "Forsvarets Efterretningstjeneste (FE)"
+country = "DK"
+region = "Norden"
+tier = 1
+domains = ["fe-ddis.dk"]
+
+[[source]]
+name = "Forsvaret (Danmark)"
+country = "DK"
+region = "Norden"
+tier = 1
+domains = ["forsvaret.dk"]
+
+[[source]]
+name = "Skyddspolisen (Supo)"
+country = "FI"
+region = "Norden"
+tier = 1
+domains = ["supo.fi"]
+
+[[source]]
+name = "Puolustusvoimat / Försvarsmakten (Finland)"
+country = "FI"
+region = "Norden"
+tier = 1
+domains = ["puolustusvoimat.fi"]
+
+[[source]]
+name = "Kaitsepolitseiamet (KAPO)"
+country = "EE"
+region = "Baltikum"
+tier = 1
+domains = ["kapo.ee"]
+
+[[source]]
+name = "Välisluureamet"
+country = "EE"
+region = "Baltikum"
+tier = 1
+domains = ["valisluureamet.ee"]
+
+[[source]]
+name = "Valsts drošības dienests (VDD)"
+country = "LV"
+region = "Baltikum"
+tier = 1
+domains = ["vdd.gov.lv"]
+
+[[source]]
+name = "Valstybės saugumo departamentas (VSD)"
+country = "LT"
+region = "Baltikum"
+tier = 1
+domains = ["vsd.lt"]
+
+[[source]]
+name = "NATO"
+country = "INT"
+region = "NATO"
+tier = 2
+domains = ["nato.int"]
+
+[[source]]
+name = "Europeiska unionens råd"
+country = "EU"
+region = "EU"
+tier = 2
+domains = ["consilium.europa.eu"]
+
+[[source]]
+name = "Europeiska kommissionen"
+country = "EU"
+region = "EU"
+tier = 2
+domains = ["commission.europa.eu"]
+
+[[source]]
+name = "ENISA"
+country = "EU"
+region = "EU"
+tier = 2
+domains = ["enisa.europa.eu"]
