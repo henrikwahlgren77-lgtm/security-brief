@@ -1,0 +1,27 @@
+services:
+  security-brief:
+    build: .
+    container_name: security-brief
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - brief_data:/data
+    expose:
+      - "8000"
+    networks:
+      - brief_internal
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp
+
+volumes:
+  brief_data:
+
+networks:
+  brief_internal:
+    driver: bridge
