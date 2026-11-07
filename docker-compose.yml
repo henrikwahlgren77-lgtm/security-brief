@@ -5,12 +5,12 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      DATABASE_PATH: /data/security_brief.sqlite3
     volumes:
       - brief_data:/data
-    expose:
-      - "8000"
-    networks:
-      - brief_internal
+    ports:
+      - "127.0.0.1:8098:8000"
     security_opt:
       - no-new-privileges:true
     cap_drop:
@@ -21,7 +21,3 @@ services:
 
 volumes:
   brief_data:
-
-networks:
-  brief_internal:
-    driver: bridge
