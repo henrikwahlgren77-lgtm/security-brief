@@ -256,6 +256,17 @@ class SourceStore:
         with self._connect() as connection:
             connection.execute("UPDATE sources SET summary = ? WHERE id = ?", (summary.strip(), source_id))
 
+    def was_fetched_before(self, url: str, before: datetime) -> bool:
+        """True if ``url`` was successfully fetched at some time earlier than ``before``."""
+        if before.tzinfo is None:
+            raise SourceError("before must be timezone-aware")
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT 1 FROM sources WHERE canonical_url = ? AND fetch_status = 'ok' AND fetched_at < ? LIMIT 1",
+                (canonicalize_url(url), before.astimezone(timezone.utc).isoformat()),
+            ).fetchone()
+        return row is not None
+
     def fetched_urls(self) -> set[str]:
         """Canonical URLs that have at least one successful fetch."""
         with self._connect() as connection:

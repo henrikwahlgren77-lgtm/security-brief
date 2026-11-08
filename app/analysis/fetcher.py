@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import ipaddress
 import socket
+from dataclasses import dataclass
 from datetime import date, datetime, timezone
 from html.parser import HTMLParser
 from typing import Callable
@@ -125,6 +126,16 @@ def extract_page(html: str) -> tuple[str | None, str | None, str]:
     return title, parse_iso_utc(page.published), text
 
 
+@dataclass(frozen=True, slots=True)
+class FetchedDocument:
+    url: str
+    status: FetchStatus
+    http_status: int | None = None
+    body: bytes = b""
+    final_url: str | None = None  # after redirects; relative links resolve against this
+    error: str | None = None
+
+
 class SourceFetcher:
     def __init__(
         self,
@@ -168,7 +179,9 @@ class SourceFetcher:
             if not ipaddress.ip_address(address).is_global:
                 raise _Blocked("host resolves to a non-public address")
 
-    def _get(self, url: str) -> tuple[httpx.Response, bytes, str]:
+    def _get(
+        self, url: str, accepted_types: tuple[str, ...] = ACCEPTED_TYPES
+    ) -> tuple[httpx.Response, bytes, str]:
         current = url
         for _ in range(MAX_REDIRECTS + 1):
             self._check_target(current)
@@ -182,7 +195,7 @@ class SourceFetcher:
                     continue
                 chunks, size = [], 0
                 content_type = response.headers.get("content-type", "").split(";")[0].strip().lower()
-                if response.status_code == 200 and content_type not in ACCEPTED_TYPES:
+                if response.status_code == 200 and content_type not in accepted_types:
                     raise ValueError(f"unsupported content type: {content_type or 'unknown'}")
                 for chunk in response.iter_bytes():
                     size += len(chunk)
@@ -191,6 +204,25 @@ class SourceFetcher:
                     chunks.append(chunk)
                 return response, b"".join(chunks), current
         raise _Blocked("too many redirects")
+
+    def fetch_document(self, url: str, accepted_types: tuple[str, ...]) -> "FetchedDocument":
+        """Fetch a non-source document (a feed or an index page) with the same protections as sources.
+
+        Nothing is stored as a source: a feed lists where to look, it is not evidence itself.
+        Never raises for network or policy problems; they come back in ``status``.
+        """
+        try:
+            validate_url(url)
+            response, body, final_url = self._get(url, accepted_types)
+        except _Blocked as exc:
+            return FetchedDocument(url, FetchStatus.BLOCKED, error=str(exc))
+        except (httpx.TimeoutException, httpx.TransportError, ConnectionError) as exc:
+            return FetchedDocument(url, FetchStatus.UNREACHABLE, error=f"{type(exc).__name__}: {exc}"[:300])
+        except (ValueError, SourceError) as exc:
+            return FetchedDocument(url, FetchStatus.ERROR, error=str(exc)[:300])
+        if response.status_code != 200:
+            return FetchedDocument(url, FetchStatus.HTTP_ERROR, http_status=response.status_code, error=f"HTTP {response.status_code}")
+        return FetchedDocument(url, FetchStatus.OK, http_status=200, body=body, final_url=final_url)
 
     def fetch(
         self,
