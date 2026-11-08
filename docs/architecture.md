@@ -146,3 +146,7 @@ Trust boundaries:
 - Two containers write the same SQLite file on one host; short transactions and SQLite's file locking handle this. Do not run several analysis jobs at once.
 
 Not built: source discovery (the operator supplies URLs), scheduling, and any automatic publishing.
+
+## Source discovery
+
+`app.analysis.discovery` finds candidate pages from feeds and index pages configured in `config/feeds.toml` (shipped with no feeds). It reuses the guarded `SourceFetcher.fetch_document`, parses RSS/Atom with a strict expat-based parser that refuses any DOCTYPE or entity declaration, filters by approved host, age window, earlier use and keyword relevance, ranks, and records every decision in `discovery_runs`, `discovery_feeds` and `discovery_items`. It makes no model calls. The job runs it with `--discover`; the selected URLs then go through the normal fetch, analysis, validation and draft submission. Details, safety properties and the GitHub review: `docs/source-discovery.md`.

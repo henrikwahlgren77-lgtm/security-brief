@@ -9,6 +9,16 @@ The job turns a list of source URLs into a **draft** for editorial review. It do
 3. `mkdir -p analysis-input` and put a `urls.txt` in it: one URL per line, `#` for comments. Only hosts in `config/approved_sources.toml` are fetched; anything else is recorded as blocked.
 4. `docker compose build` (the image now includes `prompts/` and `config/`).
 
+## Finding the URLs (optional)
+
+Instead of writing `urls.txt` by hand, let the job discover them from feeds you have configured and checked: see [source-discovery.md](source-discovery.md). Then run with `--discover`:
+
+```bash
+docker compose run --rm analysis --date 2026-11-08 --discover --no-submit
+```
+
+`config/feeds.toml` ships with no feeds, so `--discover` stops with a clear message until you add some.
+
 ## Each run
 
 ```bash

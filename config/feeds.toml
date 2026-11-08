@@ -1,0 +1,42 @@
+# Source discovery: where to look for today's candidate pages.
+#
+# Every feed URL must be https and on an approved host (config/approved_sources.toml).
+# THIS FILE SHIPS WITH NO FEEDS. No feed address has been verified from this repository
+# (the build environment could not reach the sites), and an invented address would be worse
+# than none. Add the feeds you have checked in a browser, then run:
+#
+#     docker compose run --rm --entrypoint python analysis -m app.analysis.discovery --check-feeds
+#
+# which fetches each one and reports status, item count and newest date. See docs/source-discovery.md.
+
+[settings]
+window_hours = 36     # keep items published within this many hours (1-336)
+max_urls = 20         # select at most this many per run (1-30)
+
+# Optional: replace the built-in keyword list (Swedish, Norwegian, Danish, Finnish, Baltic and English
+# terms). A keyword matches at the start of a word, so "försvar" also matches "försvarsmakten".
+# [keywords]
+# terms = ["försvar", "nato", "sabotage"]
+
+# --- Examples (remove the leading # and use real, checked addresses) ---------------------------------
+#
+# An RSS or Atom feed. relevance = "keywords" keeps only items with a keyword match;
+# relevance = "all" keeps everything in the window (use it for feeds that are all on topic).
+#
+# [[feed]]
+# name = "Example authority, press releases"
+# url = "https://www.example-authority.se/rss/press"
+# kind = "feed"
+# relevance = "all"
+# max_items = 40
+#
+# A page that lists links but has no feed. Only links whose path matches "include" are used, and the
+# pages carry no dates here, so their age is read later from the page itself.
+#
+# [[feed]]
+# name = "Example authority, news index"
+# url = "https://www.example-authority.se/nyheter/"
+# kind = "html"
+# include = "^/nyheter/[^/]+/?$"
+# relevance = "all"
+# max_items = 20

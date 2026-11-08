@@ -216,6 +216,8 @@ def main(argv: Sequence[str] | None = None, *, env: Mapping[str, str] | None = N
     parser.add_argument("--date", help="report date YYYY-MM-DD (default: today, UTC)")
     parser.add_argument("--url", action="append", default=[], help="a source URL (repeatable)")
     parser.add_argument("--urls-file", help="file with one URL per line; # starts a comment")
+    parser.add_argument("--discover", action="store_true", help="find today's candidate URLs from config/feeds.toml and add them")
+    parser.add_argument("--feeds-config", help="feeds file for --discover (default: config/feeds.toml)")
     parser.add_argument("--db", help="SQLite path (default: $DATABASE_PATH)")
     parser.add_argument("--api-url", help="base URL of the publication API (default: $BRIEF_API_URL)")
     parser.add_argument("--no-submit", action="store_true", help="analyse and print the report; submit nothing")
@@ -227,6 +229,16 @@ def main(argv: Sequence[str] | None = None, *, env: Mapping[str, str] | None = N
     try:
         report_date = date.fromisoformat(args.date) if args.date else datetime.now(timezone.utc).date()
         urls = [*args.url, *(read_urls(args.urls_file) if args.urls_file else [])]
+        db_path = args.db or env.get("DATABASE_PATH") or "./data/security_brief.sqlite3"
+        if args.discover:
+            from .discovery import DiscoveryError, discover_urls
+
+            try:
+                found = discover_urls(db_path, args.feeds_config, fetcher=overrides.get("fetcher"))
+            except DiscoveryError as exc:
+                raise JobError(f"discovery failed: {exc}") from None
+            logger.info("discovery %s selected %d URL(s)", found.run_id, len(found.selected))
+            urls += found.urls
         submit = overrides.pop("submit", None)
         if submit is None and not args.no_submit:
             token = env.get("INGEST_TOKEN", "").strip()
@@ -236,8 +248,7 @@ def main(argv: Sequence[str] | None = None, *, env: Mapping[str, str] | None = N
             submit = lambda payload: submit_via_api(base, token, payload)  # noqa: E731
         result = run_job(
             urls, report_date=report_date, env=env, submit=None if args.no_submit else submit,
-            db_path=args.db or env.get("DATABASE_PATH") or "./data/security_brief.sqlite3",
-            allow_mock=args.allow_mock, **overrides,
+            db_path=db_path, allow_mock=args.allow_mock, **overrides,
         )
     except (JobError, SourceError, ProviderError, AssessmentError, PromptError, ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
